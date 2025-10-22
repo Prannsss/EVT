@@ -175,7 +175,69 @@ const Sidebar = React.forwardRef<
     },
     ref
   ) => {
-    const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
+    const { isMobile, state, openMobile, setOpenMobile, setOpen } = useSidebar()
+    const hoverOpenedRef = React.useRef(false)
+    const openTimerRef = React.useRef<number | null>(null)
+    const closeTimerRef = React.useRef<number | null>(null)
+
+    // Delays (ms) for a smoother hover interaction.
+    const OPEN_DELAY = 120
+    const CLOSE_DELAY = 200
+
+    const clearTimers = React.useCallback(() => {
+      if (openTimerRef.current) {
+        window.clearTimeout(openTimerRef.current)
+        openTimerRef.current = null
+      }
+      if (closeTimerRef.current) {
+        window.clearTimeout(closeTimerRef.current)
+        closeTimerRef.current = null
+      }
+    }, [])
+
+    const handleMouseEnter = React.useCallback(() => {
+      // Only temporarily open when the sidebar is collapsed and not on mobile
+      if (isMobile || state !== "collapsed") return
+
+      // Cancel any pending close
+      if (closeTimerRef.current) {
+        window.clearTimeout(closeTimerRef.current)
+        closeTimerRef.current = null
+      }
+
+      if (!hoverOpenedRef.current && !openTimerRef.current) {
+        openTimerRef.current = window.setTimeout(() => {
+          hoverOpenedRef.current = true
+          setOpen(true)
+          openTimerRef.current = null
+        }, OPEN_DELAY)
+      }
+    }, [isMobile, state, setOpen])
+
+    const handleMouseLeave = React.useCallback(() => {
+      // If we haven't actually opened yet, cancel the open timer.
+      if (openTimerRef.current) {
+        window.clearTimeout(openTimerRef.current)
+        openTimerRef.current = null
+        return
+      }
+
+      if (!hoverOpenedRef.current) return
+
+      if (!closeTimerRef.current) {
+        closeTimerRef.current = window.setTimeout(() => {
+          hoverOpenedRef.current = false
+          setOpen(false)
+          closeTimerRef.current = null
+        }, CLOSE_DELAY)
+      }
+    }, [setOpen])
+
+    React.useEffect(() => {
+      return () => {
+        clearTimers()
+      }
+    }, [clearTimers])
 
     if (collapsible === "none") {
       return (
@@ -215,16 +277,18 @@ const Sidebar = React.forwardRef<
     return (
       <div
         ref={ref}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
         className="group peer hidden md:block text-sidebar-foreground"
         data-state={state}
         data-collapsible={state === "collapsed" ? collapsible : ""}
         data-variant={variant}
         data-side={side}
       >
-        {/* This is what handles the sidebar gap on desktop */}
+        {/* This is what handles the sidebar gap on desktop; start below the topbar so borders align */}
         <div
           className={cn(
-            "duration-200 relative h-svh w-[--sidebar-width] bg-transparent transition-[width] ease-linear",
+            "duration-200 relative top-16 h-[calc(100vh-4rem)] w-[--sidebar-width] bg-sidebar transition-[width] ease-linear",
             "group-data-[collapsible=offcanvas]:w-0",
             "group-data-[side=right]:rotate-180",
             variant === "floating" || variant === "inset"
@@ -234,14 +298,16 @@ const Sidebar = React.forwardRef<
         />
         <div
           className={cn(
-            "duration-200 fixed inset-y-0 z-10 hidden h-svh w-[--sidebar-width] transition-[left,right,width] ease-linear md:flex",
+            // Fix the sidebar below the topbar (h-16) so header lines align
+            // Add a top border so it lines up with the page topbar's bottom border
+            "duration-200 fixed top-16 bottom-0 z-10 hidden w-[--sidebar-width] transition-[left,right,width] ease-linear md:flex border-t border-border",
             side === "left"
               ? "left-0 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]"
               : "right-0 group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)]",
-            // Adjust the padding for floating and inset variants.
+            // Adjust the padding for floating and inset variants and add right padding when collapsed so icons aren't jam-packed.
             variant === "floating" || variant === "inset"
-              ? "p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4)_+2px)]"
-              : "group-data-[collapsible=icon]:w-[--sidebar-width-icon] group-data-[side=left]:border-r group-data-[side=right]:border-l",
+              ? "p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4)_+2px)] group-data-[collapsible=icon]:pr-3"
+              : "group-data-[collapsible=icon]:w-[--sidebar-width-icon] group-data-[collapsible=icon]:pr-3 group-data-[side=left]:border-r group-data-[side=right]:border-l",
             className
           )}
           {...props}
@@ -321,9 +387,8 @@ const SidebarInset = React.forwardRef<
   return (
     <main
       ref={ref}
-      className={cn(
-        "relative flex min-h-svh flex-1 flex-col bg-background",
-        "peer-data-[variant=inset]:min-h-[calc(100svh-theme(spacing.4))] md:peer-data-[variant=inset]:m-2 md:peer-data-[state=collapsed]:peer-data-[variant=inset]:ml-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-xl md:peer-data-[variant=inset]:shadow",
+    className={cn(
+        "relative flex min-h-svh flex-1 flex-col bg-sidebar",
         className
       )}
       {...props}
@@ -404,9 +469,11 @@ const SidebarContent = React.forwardRef<
       ref={ref}
       data-sidebar="content"
       className={cn(
-        "flex min-h-0 flex-1 flex-col gap-2 overflow-auto group-data-[collapsible=icon]:overflow-hidden",
-        className
-      )}
+          "flex min-h-0 flex-1 flex-col gap-2 overflow-auto group-data-[collapsible=icon]:overflow-hidden",
+          // Add small horizontal padding when collapsed so icons have room to breathe
+          "group-data-[collapsible=icon]:px-1",
+          className
+        )}
       {...props}
     />
   )
@@ -512,7 +579,7 @@ const SidebarMenuItem = React.forwardRef<
 SidebarMenuItem.displayName = "SidebarMenuItem"
 
 const sidebarMenuButtonVariants = cva(
-  "peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-none ring-sidebar-ring transition-[width,height,padding] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-sidebar-accent data-[active=true]:font-medium data-[active=true]:text-sidebar-accent-foreground data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-2 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
+  "peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-none ring-sidebar-ring transition-[width,height,padding] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-sidebar-accent data-[active=true]:font-medium data-[active=true]:text-sidebar-accent-foreground data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-2 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
   {
     variants: {
       variant: {

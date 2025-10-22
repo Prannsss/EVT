@@ -10,8 +10,6 @@ import './globals.css';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ThemeToggle } from '@/components/theme-toggle';
-import { AdminSidebar } from '@/components/admin-sidebar';
-import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 
 
 function AuthLayout({ children }: { children: React.ReactNode }) {
@@ -47,18 +45,13 @@ function AdminPageLayout({ children }: { children: React.ReactNode }) {
                 <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
                 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&family=Instrument+Sans:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet" />
             </head>
-            <body className={cn('min-h-screen bg-background text-foreground font-body', theme)}>
-                <SidebarProvider>
-                    <AdminSidebar />
-                    <SidebarInset className="p-8">
-                        {children}
-                    </SidebarInset>
-                </SidebarProvider>
-                <div className="fixed top-4 right-4">
-                    <ThemeToggle />
-                </div>
+          <body className={cn('min-h-screen bg-background text-foreground font-body', theme)}>
+                {/* For admin routes we let the route-level admin layout provide the sidebar and inset.
+                  Root layout only needs to render the page content and global utilities. */}
+                {children}
+                {/* Theme toggle lives inside the AdminLayout header to avoid duplicates */}
                 <Toaster />
-            </body>
+              </body>
         </html>
     )
 }
@@ -125,9 +118,8 @@ export default function RootLayout({
                 <div>
                   <h3 className="font-bold font-headline text-lg mb-2">Contact Us</h3>
                   <div className="text-sm space-y-2">
-                    <p>123 Nature Lane, Serenity Valley</p>
-                    <p>Email: contact@elimarspring.com</p>
-                    <p>Phone: (123) 456-7890</p>
+                    <p>Barangay Binaobao, Dumangas, Philippines, 5006</p>
+                    <p>Phone: +(63) 905 556 5755</p>
                   </div>
                 </div>
               </div>

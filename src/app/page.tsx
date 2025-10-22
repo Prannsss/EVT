@@ -5,9 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Button } from "../components/ui/button";
 import { PlaceHolderImages } from "../lib/placeholder-images";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
-import { Card, CardContent } from "../components/ui/card";
-import { ScrollArea, ScrollBar } from "../components/ui/scroll-area";
+import Tour3D from "../components/Tour3D";
 
 export default function Home() {
   const heroImage = PlaceHolderImages.find(p => p.id === 'hero');
@@ -18,12 +16,11 @@ export default function Home() {
       <section className="relative w-full h-[60vh] md:h-[80vh]">
         {heroImage && (
           <Image
-            src={heroImage.imageUrl}
-            alt={heroImage.description}
+            src="/assets/main.png"
+            alt="Elimar Spring Garden Hero Image"
             fill
             className="object-cover"
             priority
-            data-ai-hint={heroImage.imageHint}
           />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-background to-black/50" />
@@ -50,42 +47,7 @@ export default function Home() {
       </section>
 
       <section className="container py-12 md:py-24">
-        <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold font-headline">3D Tour</h2>
-            <p className="mt-2 text-muted-foreground italic">Take a virtual walk through our beautiful resort.</p>
-        </div>
-        <Tabs defaultValue="1" className="w-full">
-          <div className="flex justify-center">
-             <ScrollArea className="max-w-full whitespace-nowrap rounded-md">
-                <TabsList>
-                  {Array.from({ length: 15 }, (_, i) => (
-                    <TabsTrigger key={i + 1} value={`${i + 1}`}>
-                      {i + 1}
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
-                <ScrollBar orientation="horizontal" />
-            </ScrollArea>
-          </div>
-
-          {tourImages.map((image, index) => (
-             <TabsContent key={image.id} value={`${index + 1}`}>
-                <Card>
-                  <CardContent className="p-4">
-                      <div className="relative aspect-video">
-                        <Image
-                            src={image.imageUrl}
-                            alt={image.description}
-                            fill
-                            className="object-cover rounded-md"
-                            data-ai-hint={image.imageHint}
-                        />
-                      </div>
-                  </CardContent>
-                </Card>
-             </TabsContent>
-          ))}
-        </Tabs>
+        <Tour3D />
       </section>
     </div>
   );

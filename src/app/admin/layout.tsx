@@ -1,17 +1,7 @@
 
-import { AdminSidebar } from '@/components/admin-sidebar';
+import AdminLayout from '@/layouts/AdminLayout';
 
-export default function AdminLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="flex">
-      <AdminSidebar />
-      <main className="flex-1 p-8">
-        {children}
-      </main>
-    </div>
-  );
+export default function AdminRootLayout({ children }: { children: React.ReactNode }) {
+  // Use the centralized AdminLayout to avoid duplicate sidebars/layout issues.
+  return <AdminLayout>{children}</AdminLayout>;
 }
