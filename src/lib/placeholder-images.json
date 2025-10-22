@@ -1,3 +1,100 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "hero",
+      "description": "A lush, serene garden path at a resort.",
+      "imageUrl": "https://images.unsplash.com/photo-1709399922430-8703b0644e6a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxyZXNvcnQlMjBnYXJkZW58ZW58MHx8fHwxNzYxMTQyODI1fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "resort garden"
+    },
+    {
+      "id": "tour-1",
+      "description": "Resort view 1",
+      "imageUrl": "https://images.unsplash.com/photo-1694267900696-0d8b1cff6728?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxyZXNvcnQlMjB2aWV3fGVufDB8fHx8MTc2MTE0MzAxNXww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "resort view"
+    },
+    {
+      "id": "tour-2",
+      "description": "Resort view 2",
+      "imageUrl": "https://images.unsplash.com/photo-1722409195473-d322e99621e3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxyZXNvcnQlMjBwb29sfGVufDB8fHx8MTc2MTE0MzAxNXww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "resort pool"
+    },
+    {
+      "id": "tour-3",
+      "description": "Resort view 3",
+      "imageUrl": "https://images.unsplash.com/photo-1611892440504-42a792e24d32?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxob3RlbCUyMHJvb218ZW58MHx8fHwxNzYxMDc4MzI5fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "hotel room"
+    },
+    {
+      "id": "tour-4",
+      "description": "Resort view 4",
+      "imageUrl": "https://images.unsplash.com/photo-1597213515962-3d0a60f05feb?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHxyZXNvcnQlMjByZXN0YXVyYW50fGVufDB8fHx8MTc2MTE0MzAxNXww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "resort restaurant"
+    },
+    {
+      "id": "tour-5",
+      "description": "Resort view 5",
+      "imageUrl": "https://images.unsplash.com/photo-1683773219648-013421d5ff60?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8Z2FyZGVuJTIwcGF0aHxlbnwwfHx8fDE3NjEwMzY1Njd8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "garden path"
+    },
+    {
+      "id": "tour-6",
+      "description": "Resort view 6",
+      "imageUrl": "https://images.unsplash.com/photo-1506953823976-52e1fdc0149a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxiZWFjaCUyMHZpZXd8ZW58MHx8fHwxNzYxMTQzMDE1fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "beach view"
+    },
+    {
+      "id": "tour-7",
+      "description": "Resort view 7",
+      "imageUrl": "https://images.unsplash.com/photo-1742844551970-ce693b4f05ed?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHxyZXNvcnQlMjBsb2JieXxlbnwwfHx8fDE3NjExNDMwMTZ8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "resort lobby"
+    },
+    {
+      "id": "tour-8",
+      "description": "Resort view 8",
+      "imageUrl": "https://images.unsplash.com/photo-1728404259075-209cfb5bb89c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHxzcGElMjBpbnRlcmlvcnxlbnwwfHx8fDE3NjExNDMwMTV8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "spa interior"
+    },
+    {
+      "id": "tour-9",
+      "description": "Resort view 9",
+      "imageUrl": "https://images.unsplash.com/photo-1604223190546-a43e4c7f29d7?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxtb3VudGFpbiUyMGxhbmRzY2FwZXxlbnwwfHx8fDE3NjExMDkxMzh8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "mountain landscape"
+    },
+    {
+      "id": "tour-10",
+      "description": "Resort view 10",
+      "imageUrl": "https://images.unsplash.com/photo-1670552576653-06a06282ad53?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxzdW5zZXQlMjBwb29sfGVufDB8fHx8MTc2MTE0MzAxNnww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "sunset pool"
+    },
+    {
+      "id": "tour-11",
+      "description": "Resort view 11",
+      "imageUrl": "https://images.unsplash.com/photo-1746730921250-b31cb91788e3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxsdXh1cnklMjBzdWl0ZXxlbnwwfHx8fDE3NjExMDgzMzZ8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "luxury suite"
+    },
+    {
+      "id": "tour-12",
+      "description": "Resort view 12",
+      "imageUrl": "https://images.unsplash.com/photo-1455931016079-977a69c8dc44?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxvY2VhbiUyMGJ1bmdhbG93fGVufDB8fHx8MTc2MTE0MzAxNnww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "ocean bungalow"
+    },
+    {
+      "id": "tour-13",
+      "description": "Resort view 13",
+      "imageUrl": "https://images.unsplash.com/photo-1679155779025-852535ed4aa3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxmb3Jlc3QlMjBjYWJpbnxlbnwwfHx8fDE3NjExMTAxMzl8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "forest cabin"
+    },
+    {
+      "id": "tour-14",
+      "description": "Resort view 14",
+      "imageUrl": "https://images.unsplash.com/photo-1682629906883-76eaa5e03693?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHx0cm9waWNhbCUyMGJhcnxlbnwwfHx8fDE3NjExNDMwMTV8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "tropical bar"
+    },
+    {
+      "id": "tour-15",
+      "description": "Resort view 15",
+      "imageUrl": "https://images.unsplash.com/photo-1619680939776-4eadd78709a4?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxyZXNvcnQlMjBhZXJpYWx8ZW58MHx8fHwxNzYxMTQzMDE2fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "resort aerial"
+    }
+  ]
 }
