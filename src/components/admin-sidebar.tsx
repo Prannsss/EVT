@@ -10,9 +10,8 @@ import {
   GalleryHorizontal,
   Settings,
   Home,
-  Map,
   FileText,
-  BarChart3,
+  LogOut
 } from 'lucide-react';
 import {
   Sidebar,
@@ -38,9 +37,7 @@ const mainNavLinks = [
 
 const contentLinks = [
   { href: '/admin/rooms', label: 'Rooms', icon: Home },
-  { href: '/admin/tours', label: 'Tours', icon: Map },
   { href: '/admin/reports', label: 'Reports', icon: FileText },
-  { href: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
 ];
 
 const settingsLinks = [
@@ -164,10 +161,10 @@ export function AdminSidebar() {
           variant="outline"
           className="w-full justify-start group-data-[collapsible=icon]:justify-center"
         >
-          <Link href="/">
-            <Home className="w-4 h-4 mr-2 group-data-[collapsible=icon]:mr-0" />
+          <Link href="/login">
+            <LogOut className="w-4 h-4 mr-2 group-data-[collapsible=icon]:mr-0" />
             <span className="group-data-[collapsible=icon]:hidden">
-              Back to Website
+              Logout
             </span>
           </Link>
         </Button>

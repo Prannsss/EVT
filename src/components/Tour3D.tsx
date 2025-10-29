@@ -16,7 +16,7 @@ function LoadingFallback() {
     <div className="absolute inset-0 flex items-center justify-center bg-neutral-900/50 backdrop-blur-sm">
       <div className="flex flex-col items-center gap-4">
         <Loader2 className="w-12 h-12 animate-spin text-white" />
-        <p className="text-white text-lg font-medium">Loading panorama...</p>
+        <p className="text-white text-lg font-medium">Loading Tour...</p>
       </div>
     </div>
   );
@@ -40,7 +40,7 @@ export default function Tour3D({ height = '80vh' }: Tour3DProps) {
 
   // NOTE: For Next.js, images in public/ must use absolute path starting with '/assets/'.
   // Update extension below to match your files (jpg/png).
-  const totalImages = 15;
+  const totalImages = 20;
   const imageUrls = Array.from(
     { length: totalImages },
     (_, i) => `/assets/vt${i + 1}.png`

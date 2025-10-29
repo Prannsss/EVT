@@ -156,24 +156,8 @@ export default function AdminLayout({
               {children}
             </div>
           </main>
-
-          {/* Footer */}
-          <footer className="border-t border-border bg-background py-4 px-6">
-            <div className="flex flex-col sm:flex-row justify-between items-center gap-2 text-sm text-muted-foreground">
-              <p>© {new Date().getFullYear()} Elimar Spring Garden. All rights reserved.</p>
-              <div className="flex gap-4">
-                <Link href="/admin/help" className="hover:text-foreground transition-colors">
-                  Help
-                </Link>
-                <Link href="/admin/privacy" className="hover:text-foreground transition-colors">
-                  Privacy
-                </Link>
-                <Link href="/admin/terms" className="hover:text-foreground transition-colors">
-                  Terms
-                </Link>
-              </div>
-            </div>
-          </footer>
+          
+          {/* Footer removed as requested */}
         </SidebarInset>
       </div>
     </SidebarProvider>

@@ -1,4 +1,4 @@
- 'use client';
+'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,16 @@ import {
   ArrowDownRight,
   MoreHorizontal,
 } from 'lucide-react';
+import { Bar } from 'react-chartjs-2';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+} from 'chart.js';
 import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
@@ -26,11 +36,54 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import Link from 'next/link';
+
+// Register ChartJS components
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend
+);
 
 // Sample data for demonstration
+// Monthly reservation data for bar chart
+const monthlyReservationData = {
+  labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+  datasets: [
+    {
+      label: 'Reservations',
+      data: [65, 59, 80, 81, 56, 55, 72, 90, 81, 75, 62, 78],
+      backgroundColor: 'rgba(59, 130, 246, 0.6)',
+      borderColor: 'rgb(37, 99, 235)',
+      borderWidth: 1,
+    },
+  ],
+};
+
+const chartOptions = {
+  responsive: true,
+  plugins: {
+    legend: {
+      position: 'top' as const,
+    },
+    title: {
+      display: true,
+      text: 'Monthly Reservations',
+    },
+  },
+  scales: {
+    y: {
+      beginAtZero: true,
+    },
+  },
+};
+
 const statsCards = [
   {
-    title: 'Total Bookings',
+    title: 'Total Reservations',
     value: '245',
     change: '+12.5%',
     trend: 'up',
@@ -38,7 +91,7 @@ const statsCards = [
     color: 'from-blue-600 to-sky-400',
   },
   {
-    title: 'Active Clients',
+    title: 'Total Rooms',
     value: '1,429',
     change: '+5.2%',
     trend: 'up',
@@ -54,7 +107,7 @@ const statsCards = [
     color: 'from-blue-600 to-sky-400',
   },
   {
-    title: 'Growth Rate',
+    title: 'Total Guests',
     value: '24.8%',
     change: '-2.1%',
     trend: 'down',
@@ -104,6 +157,10 @@ const recentBookings = [
 export default function DashboardPage() {
   return (
     <>
+      {/* Admin Title - Hidden when sidebar is toggled */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold group-data-[collapsible=icon]:hidden">Admin</h1>
+      </div>
       {/* Stats Grid */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8">
         {statsCards.map((stat, index) => {
@@ -119,11 +176,7 @@ export default function DashboardPage() {
                 <CardTitle className="text-sm font-medium text-muted-foreground">
                   {stat.title}
                 </CardTitle>
-                <div
-                  className={`p-2 rounded-lg bg-gradient-to-br ${stat.color} text-white`}
-                >
-                  <Icon className="h-4 w-4" />
-                </div>
+                <Icon className="h-5 w-5 text-gray-600" />
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold">{stat.value}</div>
@@ -148,128 +201,108 @@ export default function DashboardPage() {
         })}
   </div>
 
-  {/* Recent Bookings Table */}
-  <Card className="shadow-lg">
-        <CardHeader className="flex flex-row items-center justify-between">
+  {/* Charts and Tables Grid */}
+  <div className="grid gap-6 md:grid-cols-2 mb-8">
+    {/* Monthly Reservations Chart */}
+    <Card className="shadow-lg">
+      <CardHeader>
+        <div className="flex flex-row items-center justify-between">
           <div>
-            <CardTitle className="text-xl">Recent Bookings</CardTitle>
-            <CardDescription className="mt-1">
-              Latest reservations and their current status
-            </CardDescription>
+            <CardTitle className="text-xl">Monthly Reservations</CardTitle>
+            <CardDescription>Reservation trends throughout the year</CardDescription>
           </div>
-          <Button variant="outline" size="sm">
-            View All
+          <select 
+            className="border rounded p-1 text-sm"
+            defaultValue="2025"
+            aria-label="Select year"
+          >
+            <option value="2023">2023</option>
+            <option value="2024">2024</option>
+            <option value="2025">2025</option>
+            <option value="2026">2026</option>
+          </select>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="h-80">
+          <Bar options={chartOptions} data={monthlyReservationData} />
+        </div>
+      </CardContent>
+    </Card>
+
+    {/* Recent Bookings Table */}
+    <Card className="shadow-lg">
+      <CardHeader className="flex flex-row items-center justify-between">
+        <div>
+          <CardTitle className="text-xl">Recent Bookings</CardTitle>
+          <CardDescription className="mt-1">
+            Latest reservations and their current status
+          </CardDescription>
+        </div>
+        <Button variant="outline" size="sm" asChild>
+            <Link href="/admin/bookings">View All</Link>
           </Button>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Booking ID</TableHead>
-                <TableHead>Client</TableHead>
-                <TableHead>Room</TableHead>
-                <TableHead>Check-in</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Client</TableHead>
+              <TableHead>Room</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {recentBookings.map((booking) => (
+              <TableRow key={booking.id} className="hover:bg-muted/50">
+                <TableCell>{booking.client}</TableCell>
+                <TableCell>{booking.room}</TableCell>
+                <TableCell>
+                  <Badge
+                    variant={
+                      booking.status === 'Confirmed'
+                        ? 'default'
+                        : booking.status === 'Pending'
+                        ? 'secondary'
+                        : 'destructive'
+                    }
+                    className={
+                      booking.status === 'Confirmed'
+                        ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100'
+                        : booking.status === 'Pending'
+                        ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100'
+                        : ''
+                    }
+                  >
+                    {booking.status}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-right">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem>View Details</DropdownMenuItem>
+                      <DropdownMenuItem>Edit Booking</DropdownMenuItem>
+                      <DropdownMenuItem className="text-red-600">
+                        Cancel Booking
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {recentBookings.map((booking) => (
-                <TableRow key={booking.id} className="hover:bg-muted/50">
-                  <TableCell className="font-medium">{booking.id}</TableCell>
-                  <TableCell>{booking.client}</TableCell>
-                  <TableCell>{booking.room}</TableCell>
-                  <TableCell>
-                    {new Date(booking.checkIn).toLocaleDateString('en-US', {
-                      month: 'short',
-                      day: 'numeric',
-                      year: 'numeric',
-                    })}
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={
-                        booking.status === 'Confirmed'
-                          ? 'default'
-                          : booking.status === 'Pending'
-                          ? 'secondary'
-                          : 'destructive'
-                      }
-                      className={
-                        booking.status === 'Confirmed'
-                          ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100'
-                          : booking.status === 'Pending'
-                          ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100'
-                          : ''
-                      }
-                    >
-                      {booking.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem>View Details</DropdownMenuItem>
-                        <DropdownMenuItem>Edit Booking</DropdownMenuItem>
-                        <DropdownMenuItem className="text-red-600">
-                          Cancel Booking
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+            ))}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  </div>
 
-      {/* Quick Actions */}
-      <div className="grid gap-6 md:grid-cols-3 mt-8">
-        <Card className="hover:shadow-lg transition-shadow">
-          <CardHeader>
-            <CardTitle className="text-lg">Quick Add Booking</CardTitle>
-            <CardDescription>Create a new reservation quickly</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button className="w-full bg-gradient-to-r from-blue-600 to-sky-400 hover:from-blue-700 hover:to-sky-500">
-              <Calendar className="mr-2 h-4 w-4" />
-              New Booking
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card className="hover:shadow-lg transition-shadow">
-          <CardHeader>
-            <CardTitle className="text-lg">Add New Client</CardTitle>
-            <CardDescription>Register a new guest</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button className="w-full" variant="outline">
-              <Users className="mr-2 h-4 w-4" />
-              Add Client
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card className="hover:shadow-lg transition-shadow">
-          <CardHeader>
-            <CardTitle className="text-lg">Generate Report</CardTitle>
-            <CardDescription>Export analytics and data</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button className="w-full" variant="outline">
-              <TrendingUp className="mr-2 h-4 w-4" />
-              View Reports
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+  {/* Quick Actions section removed */}
     </>
   );
 }
