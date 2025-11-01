@@ -68,11 +68,6 @@ export default function Tour3D({ height = '80vh' }: Tour3DProps) {
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(container.clientWidth, container.clientHeight);
-    // Try to set sRGB output encoding when available
-    try {
-      const sRGB = (THREE as any)['sRGBEncoding'] || (THREE as any)['SRGBColorSpace'];
-      if (sRGB) (renderer as any).outputEncoding = sRGB;
-    } catch {}
     renderer.domElement.style.display = 'block';
     container.appendChild(renderer.domElement);
     rendererRef.current = renderer;
@@ -165,10 +160,7 @@ export default function Tour3D({ height = '80vh' }: Tour3DProps) {
       url,
       (texture) => {
         texture.mapping = THREE.EquirectangularReflectionMapping;
-        // set color space if available
-        try {
-          (texture as any).colorSpace = (THREE as any).SRGBColorSpace;
-        } catch {}
+        texture.colorSpace = THREE.SRGBColorSpace;
 
         // Dispose previous texture
         if (currentTextureRef.current) {
