@@ -62,4 +62,17 @@
     background-image: linear-gradient(hsl(var(--foreground) / 0.05) 1px, transparent 1px), linear-gradient(to right, hsl(var(--foreground) / 0.05) 1px, transparent 1px);
     background-size: 4rem 4rem;
   }
+  
+  /* Centered container utilities for consistent page layout */
+  .page-container {
+    @apply w-full max-w-[1400px] mx-auto px-4 sm:px-8 md:px-12 lg:px-16 xl:px-20;
+  }
+  
+  .page-container-wide {
+    @apply w-full max-w-[1600px] mx-auto px-4 sm:px-8 md:px-12 lg:px-16 xl:px-20;
+  }
+  
+  .page-container-narrow {
+    @apply w-full max-w-[1200px] mx-auto px-4 sm:px-8 md:px-12;
+  }
 }

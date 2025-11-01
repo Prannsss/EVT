@@ -1,13 +1,78 @@
 
 "use client";
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
+import { Loader2, CheckCircle } from 'lucide-react';
 
 export default function LoginPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [showVerifiedMessage, setShowVerifiedMessage] = useState(false);
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+  });
+
+  useEffect(() => {
+    // Check if user was redirected after email verification
+    if (searchParams.get('verified') === 'true') {
+      setShowVerifiedMessage(true);
+      // Hide message after 5 seconds
+      setTimeout(() => setShowVerifiedMessage(false), 5000);
+    }
+  }, [searchParams]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { id, value } = e.target;
+    setFormData(prev => ({ ...prev, [id]: value }));
+    setError('');
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setIsLoading(true);
+
+    try {
+      const response = await fetch('http://localhost:5000/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        // Store the token
+        localStorage.setItem('token', data.data.token);
+        localStorage.setItem('user', JSON.stringify(data.data.user));
+
+        // Redirect based on role
+        if (data.data.user.role === 'admin') {
+          router.push('/admin/dashboard');
+        } else {
+          router.push('/client/accommodations');
+        }
+      } else {
+        setError(data.message || 'Invalid email or password');
+      }
+    } catch (err: any) {
+      setError('Failed to login. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="w-full h-screen lg:grid lg:grid-cols-2">
       <div className="flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 h-full">
@@ -18,7 +83,18 @@ export default function LoginPage() {
               Enter your email below to login to your account
             </p>
           </div>
-          <div className="grid gap-4">
+
+          {showVerifiedMessage && (
+            <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg flex items-center gap-2">
+              <CheckCircle className="w-5 h-5 text-green-600" />
+              <div>
+                <p className="font-semibold">Email verified successfully!</p>
+                <p className="text-sm">You can now login to your account.</p>
+              </div>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="grid gap-4">
             <div className="grid gap-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -26,17 +102,29 @@ export default function LoginPage() {
                 type="email"
                 placeholder="Email"
                 required
+                value={formData.email}
+                onChange={handleInputChange}
+                disabled={isLoading}
               />
             </div>
             <div className="grid gap-2">
                 <Label htmlFor="password">Password</Label>
                 <div className="relative">
-                  <Input id="password" placeholder="Password" type={showPassword ? 'text' : 'password'} required />
+                  <Input 
+                    id="password" 
+                    placeholder="Password" 
+                    type={showPassword ? 'text' : 'password'} 
+                    required 
+                    value={formData.password}
+                    onChange={handleInputChange}
+                    disabled={isLoading}
+                  />
                   <button
                     type="button"
                     aria-label={showPassword ? 'Hide password' : 'Show password'}
                     onClick={() => setShowPassword((s) => !s)}
                     className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex h-8 w-8 items-center justify-center rounded-md text-sm text-muted-foreground hover:bg-accent/40"
+                    disabled={isLoading}
                   >
                     {showPassword ? (
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="h-4 w-4">
@@ -51,10 +139,24 @@ export default function LoginPage() {
                   </button>
                 </div>
             </div>
-            <Button type="submit" className="w-full">
-              Login
+
+            {error && (
+              <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-md">
+                {error}
+              </div>
+            )}
+
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Logging in...
+                </>
+              ) : (
+                'Login'
+              )}
             </Button>
-          </div>
+          </form>
           <div className="mt-4 text-center text-sm">
             Don&apos;t have an account?{' '}
             <Link href="/signup" className="underline">

@@ -14,21 +14,27 @@ const ThemeProviderContext = createContext<ThemeProviderState | undefined>(undef
 
 export function ThemeProvider({
   children,
-  defaultTheme = "system",
+  defaultTheme = "light",
   storageKey = "elimar-garden-theme",
 }: {
   children: ReactNode;
   defaultTheme?: Theme;
   storageKey?: string;
 }) {
-  const [theme, setTheme] = useState<Theme>(() => {
-    if (typeof window === "undefined") {
-      return defaultTheme;
-    }
-    return (localStorage.getItem(storageKey) as Theme) || defaultTheme;
-  });
+  const [theme, setTheme] = useState<Theme>(defaultTheme);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
+    const stored = localStorage.getItem(storageKey) as Theme;
+    if (stored) {
+      setTheme(stored);
+    }
+  }, [storageKey]);
+
+  useEffect(() => {
+    if (!mounted) return;
+    
     const root = window.document.documentElement;
     root.classList.remove("light", "dark");
 
@@ -38,7 +44,7 @@ export function ThemeProvider({
     }
 
     root.classList.add(effectiveTheme);
-  }, [theme]);
+  }, [theme, mounted]);
 
   const value = {
     theme,

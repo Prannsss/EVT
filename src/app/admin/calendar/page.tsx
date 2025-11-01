@@ -1,65 +1,81 @@
-'use client';
+﻿'use client';
 
-import { useState } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { format, addMonths, subMonths } from 'date-fns';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, User, Home, Users, Mail, Phone, TrendingUp, CheckCircle2, XCircle, Clock, Loader2, AlertCircle } from 'lucide-react';
+import { format, addMonths, subMonths, isSameMonth, isSameDay } from 'date-fns';
 
-// Sample reservation data
-const reservations = [
-  {
-    id: 1,
-    date: new Date(2025, 5, 15),
-    clientName: "Sarah Johnson",
-    cottage: "Garden Villa",
-    guests: 4,
-    time: "2:00 PM"
-  },
-  {
-    id: 2,
-    date: new Date(2025, 5, 18),
-    clientName: "Michael Chen",
-    cottage: "Lakeside Cottage",
-    guests: 2,
-    time: "3:30 PM"
-  },
-  {
-    id: 3,
-    date: new Date(2025, 5, 22),
-    clientName: "Emily Rodriguez",
-    cottage: "Mountain View Suite",
-    guests: 6,
-    time: "12:00 PM"
-  },
-  {
-    id: 4,
-    date: new Date(2025, 9, 23), // October 23, 2025
-    clientName: "John Smith",
-    cottage: "Garden Villa",
-    guests: 2,
-    time: "3:00 PM"
-  }
-];
-
-// Hardcoded reservation details
-const reservationDetails = {
-  clientName: "John Smith",
-  cottage: "Garden Villa",
-  guests: 2,
-  time: "3:00 PM",
-  contact: {
-    email: "john.smith@example.com",
-    phone: "+1 (555) 123-4567"
-  }
-};
+interface Booking {
+  id: number;
+  user_id: number;
+  accommodation_id: number;
+  check_in_date: string;
+  check_out_date: string;
+  adults: number;
+  kids: number;
+  pwd: number;
+  total_price: number;
+  status: string;
+  created_at: string;
+  user_name?: string;
+  user_email?: string;
+  accommodation_name?: string;
+}
 
 export default function AdminCalendarPage() {
-  const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date(2025, 9, 23)); // October 23, 2025
+  const todayDate = new Date();
+  const [currentMonth, setCurrentMonth] = useState(todayDate);
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(todayDate);
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedReservation, setSelectedReservation] = useState<Booking | undefined>();
 
-  // Get days in month
+  useEffect(() => {
+    fetchBookings();
+  }, []);
+
+  useEffect(() => {
+    if (selectedDate && bookings.length > 0) {
+      const reservation = bookings.find(b => 
+        isSameDay(new Date(b.check_in_date), selectedDate)
+      );
+      setSelectedReservation(reservation);
+    }
+  }, [selectedDate, bookings]);
+
+  const fetchBookings = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const token = localStorage.getItem('token');
+      
+      if (!token) {
+        setError('Not authenticated');
+        return;
+      }
+
+      const response = await fetch('http://localhost:5000/api/bookings', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch bookings');
+      }
+
+      const data = await response.json();
+      setBookings(data.data || []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load bookings');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const getDaysInMonth = (date: Date) => {
     const year = date.getFullYear();
     const month = date.getMonth();
@@ -68,7 +84,6 @@ export default function AdminCalendarPage() {
     
     const days = [];
     
-    // Add previous month's days
     for (let i = 0; i < firstDayOfMonth; i++) {
       const prevMonthDay = new Date(year, month, -i);
       days.unshift({
@@ -78,7 +93,6 @@ export default function AdminCalendarPage() {
       });
     }
     
-    // Add current month's days
     for (let i = 1; i <= daysInMonth; i++) {
       const currentDate = new Date(year, month, i);
       days.push({
@@ -88,7 +102,6 @@ export default function AdminCalendarPage() {
       });
     }
     
-    // Add next month's days to fill the grid (6 rows of 7 days)
     const remainingDays = 42 - days.length;
     for (let i = 1; i <= remainingDays; i++) {
       const nextMonthDay = new Date(year, month + 1, i);
@@ -102,159 +115,240 @@ export default function AdminCalendarPage() {
     return days;
   };
 
-  // Check if date has booking
   const hasBookingOnDate = (date: Date) => {
-    return reservations.some(res => 
-      res.date.getDate() === date.getDate() &&
-      res.date.getMonth() === date.getMonth() &&
-      res.date.getFullYear() === date.getFullYear()
-    );
+    return bookings.some(b => isSameDay(new Date(b.check_in_date), date));
   };
 
-  // Navigate to previous month
+  const getBookingCountForDate = (date: Date) => {
+    return bookings.filter(b => isSameDay(new Date(b.check_in_date), date)).length;
+  };
+
   const goToPreviousMonth = () => {
     setCurrentMonth(prevMonth => subMonths(prevMonth, 1));
   };
 
-  // Navigate to next month
   const goToNextMonth = () => {
     setCurrentMonth(prevMonth => addMonths(prevMonth, 1));
   };
 
-  // Handle date selection
-  const handleDateSelect = (date: Date) => {
-    setSelectedDate(date);
+  const goToToday = () => {
+    setCurrentMonth(todayDate);
+    setSelectedDate(todayDate);
+    const reservation = bookings.find(b => isSameDay(new Date(b.check_in_date), todayDate));
+    setSelectedReservation(reservation);
   };
 
-  // Get days for current month
-  const days = getDaysInMonth(currentMonth);
+  const handleDateSelect = (date: Date) => {
+    setSelectedDate(date);
+    const reservation = bookings.find(b => isSameDay(new Date(b.check_in_date), date));
+    setSelectedReservation(reservation);
+  };
 
-  // Day names
+  const days = getDaysInMonth(currentMonth);
   const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-  return (
-    <div>
-      <div className="mb-4">
-        <h2 className="text-2xl font-semibold">Booking Calendar</h2>
-        <p className="text-muted-foreground">Manage your vehicle bookings and availability</p>
-      </div>
+  const monthlyBookings = useMemo(() => 
+    bookings.filter(b => isSameMonth(new Date(b.check_in_date), currentMonth)), 
+    [bookings, currentMonth]
+  );
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-        <div className="lg:col-span-3">
-          <Card className="shadow-md">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-3xl">{format(currentMonth, 'MMMM yyyy')}</CardTitle>
+  const quickStats = useMemo(() => {
+    const stats = { active: 0, cancelled: 0, completed: 0, totalRevenue: 0 };
+    bookings.forEach(b => {
+      if (b.status === 'confirmed') stats.active++;
+      if (b.status === 'cancelled') stats.cancelled++;
+      if (b.status === 'completed') stats.completed++;
+      if (b.status !== 'cancelled') stats.totalRevenue += b.total_price;
+    });
+    return stats;
+  }, [bookings]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-96 gap-4">
+        <AlertCircle className="w-12 h-12 text-destructive" />
+        <p className="text-lg text-muted-foreground">{error}</p>
+        <Button onClick={fetchBookings}>Try Again</Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="h-[calc(100vh-8rem)] overflow-hidden">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-full">
+        <div className="lg:col-span-2 flex flex-col">
+          <Card className="shadow-lg border-2 flex-1 flex flex-col hover:shadow-xl transition-shadow">
+            <CardHeader className="flex flex-row items-center justify-between pb-4 flex-shrink-0 border-b bg-gradient-to-r from-primary/5 to-primary/10">
+              <div>
+                <CardTitle className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+                  {format(currentMonth, 'MMMM yyyy')}
+                </CardTitle>
+                <p className="text-sm text-muted-foreground mt-1 flex items-center gap-2">
+                  <CalendarIcon className="w-4 h-4" />
+                  {monthlyBookings.length} total bookings this month
+                </p>
+              </div>
               <div className="flex items-center space-x-2">
-                <Button variant="outline" size="icon" onClick={goToPreviousMonth}>
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <Button variant="outline" size="icon" onClick={goToNextMonth}>
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
+                <Button variant="outline" size="sm" onClick={goToToday} className="hidden sm:flex">Today</Button>
+                <Button variant="outline" size="icon" onClick={goToPreviousMonth}><ChevronLeft className="h-4 w-4" /></Button>
+                <Button variant="outline" size="icon" onClick={goToNextMonth}><ChevronRight className="h-4 w-4" /></Button>
               </div>
             </CardHeader>
-            <CardContent>
-              <div className="text-xs text-muted-foreground mb-1">
-                0 total bookings
-              </div>
-              
-              {/* Calendar Grid */}
-              <div className="grid grid-cols-7 gap-2">
-                {/* Day names */}
+            <CardContent className="flex-1 overflow-auto p-4">
+              <div className="grid grid-cols-7 gap-1">
                 {dayNames.map(day => (
-                  <div key={day} className="text-center py-2 text-sm font-medium">
-                    {day}
-                  </div>
+                  <div key={day} className="text-center py-3 text-sm font-semibold text-muted-foreground border-b-2">{day}</div>
                 ))}
-                
-                {/* Calendar days */}
-                {days.map((day, index) => (
-                  <div 
-                    key={index}
-                    className={`
-                      h-16 p-2 relative border cursor-pointer
-                      ${day.isCurrentMonth ? 'bg-white' : 'bg-gray-50 text-gray-400'}
-                      ${selectedDate && day.date.getDate() === selectedDate.getDate() && 
-                        day.date.getMonth() === selectedDate.getMonth() && 
-                        day.date.getFullYear() === selectedDate.getFullYear() 
-                          ? 'ring-2 ring-blue-500' : ''}
-                      ${day.hasBooking && day.isCurrentMonth ? 'bg-blue-50' : ''}
-                    `}
-                    onClick={() => handleDateSelect(day.date)}
-                  >
-                    <div className="text-right text-base">{day.date.getDate()}</div>
-                    {day.hasBooking && day.isCurrentMonth && (
-                      <div className="absolute bottom-2 left-2 right-2 h-1 bg-blue-500 rounded-full"></div>
-                    )}
-                  </div>
-                ))}
+                {days.map((day, index) => {
+                  const isTodayDate = isSameDay(day.date, todayDate);
+                  const bookingCount = getBookingCountForDate(day.date);
+                  const isSelected = selectedDate && isSameDay(day.date, selectedDate);
+                  return (
+                    <div 
+                      key={index}
+                      className={`h-20 p-2 relative border rounded-lg cursor-pointer transition-all duration-200 ${day.isCurrentMonth ? 'bg-background hover:bg-accent/50' : 'bg-muted/30 text-muted-foreground'} ${isSelected ? 'ring-2 ring-primary shadow-md scale-105 bg-primary/5' : ''} ${day.hasBooking && day.isCurrentMonth ? 'border-primary/50' : 'border-border'} ${isTodayDate && day.isCurrentMonth ? 'bg-primary/10 font-bold border-primary border-2' : ''} hover:shadow-sm`}
+                      onClick={() => handleDateSelect(day.date)}
+                    >
+                      <div className={`text-sm font-medium ${isTodayDate ? 'text-primary' : ''} flex items-center justify-between`}>
+                        <span>{day.date.getDate()}</span>
+                        {isTodayDate && day.isCurrentMonth && (<div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>)}
+                      </div>
+                      {bookingCount > 0 && day.isCurrentMonth && (
+                        <div className="absolute bottom-2 left-2 right-2">
+                          <div className="flex items-center justify-center gap-1">
+                            <div className="h-1.5 flex-1 bg-primary rounded-full"></div>
+                            {bookingCount > 1 && (<span className="text-[10px] font-bold text-primary bg-primary/20 px-1.5 rounded-full">{bookingCount}</span>)}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
         </div>
-        
-        <div className="lg:col-span-1">
-          <Card className="shadow-md">
-            <CardHeader>
-              <CardTitle>
-                {selectedDate ? format(selectedDate, 'MMMM d, yyyy') : 'October 23, 2025'}
+        <div className="lg:col-span-1 flex flex-col gap-4 overflow-auto">
+          <Card className="shadow-lg border-2 flex-shrink-0 hover:shadow-xl transition-shadow">
+            <CardHeader className="border-b bg-gradient-to-r from-primary/5 to-primary/10">
+              <CardTitle className="flex items-center gap-2">
+                <CalendarIcon className="w-5 h-5 text-primary" />
+                {selectedDate ? format(selectedDate, 'MMMM d, yyyy') : 'Select a date'}
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div>
-                  <h3 className="text-lg font-semibold">{reservationDetails.clientName}</h3>
-                  <p className="text-sm text-muted-foreground">
-                    {selectedDate ? format(selectedDate, 'MMMM d, yyyy') : 'October 23, 2025'} at {reservationDetails.time}
-                  </p>
+            <CardContent className="p-4">
+              {selectedReservation ? (
+                <div className="space-y-5">
+                  <div className="p-4 bg-primary/5 rounded-lg border border-primary/20">
+                    <div className="flex items-start justify-between mb-2">
+                      <h3 className="text-xl font-bold text-primary">{selectedReservation.user_name || selectedReservation.user_email || 'Unknown Client'}</h3>
+                      <Badge variant={selectedReservation.status === 'completed' ? 'default' : selectedReservation.status === 'cancelled' ? 'destructive' : 'outline'} className="ml-2">
+                        {selectedReservation.status === 'confirmed' && <Clock className="w-3 h-3 mr-1" />}
+                        {selectedReservation.status === 'completed' && <CheckCircle2 className="w-3 h-3 mr-1" />}
+                        {selectedReservation.status === 'cancelled' && <XCircle className="w-3 h-3 mr-1" />}
+                        {selectedReservation.status}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground flex items-center gap-2 mb-1">
+                      <CalendarIcon className="w-4 h-4" />
+                      {format(new Date(selectedReservation.check_in_date), 'MMMM d, yyyy')}
+                    </p>
+                    <p className="text-sm text-muted-foreground flex items-center gap-2">
+                      <Clock className="w-4 h-4" />
+                      Booking Time: {new Date(selectedReservation.check_in_date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-1 gap-4">
+                    <div className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg">
+                      <Home className="w-5 h-5 text-primary mt-0.5" />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-muted-foreground">Accommodation</p>
+                        <p className="font-semibold">{selectedReservation.accommodation_name || `Accommodation #${selectedReservation.accommodation_id}`}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg">
+                      <Users className="w-5 h-5 text-primary mt-0.5" />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-muted-foreground">Guests</p>
+                        <p className="font-semibold">{selectedReservation.adults + selectedReservation.kids + selectedReservation.pwd} people</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg">
+                      <User className="w-5 h-5 text-primary mt-0.5" />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-muted-foreground mb-2">Contact Information</p>
+                        <div className="space-y-1.5">
+                          <p className="text-sm flex items-center gap-2"><Mail className="w-3.5 h-3.5 text-muted-foreground" />{selectedReservation.user_email || 'No email'}</p>
+                        </div>
+                      </div>
+                    </div>
+                    {selectedReservation.status !== 'cancelled' && selectedReservation.total_price > 0 && (
+                      <div className="flex items-start gap-3 p-3 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200 dark:border-green-800">
+                        <TrendingUp className="w-5 h-5 text-green-600 dark:text-green-400 mt-0.5" />
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-muted-foreground">Revenue</p>
+                          <p className="font-bold text-lg text-green-600 dark:text-green-400">₱{selectedReservation.total_price.toLocaleString()}</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
-                
-                <div className="grid grid-cols-1 gap-3">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Cottage</p>
-                    <p>{reservationDetails.cottage}</p>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+                    <CalendarIcon className="w-8 h-8 text-muted-foreground" />
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Guests</p>
-                    <p>{reservationDetails.guests} people</p>
+                  <p className="text-muted-foreground">No booking for this date.</p>
+                  <p className="text-sm text-muted-foreground mt-1">Select a date with bookings to view details.</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+          <Card className="flex-shrink-0 shadow-lg border-2 hover:shadow-xl transition-shadow">
+            <CardHeader className="border-b bg-gradient-to-r from-primary/5 to-primary/10">
+              <CardTitle className="flex items-center gap-2"><TrendingUp className="w-5 h-5 text-primary" />Quick Stats</CardTitle>
+            </CardHeader>
+            <CardContent className="p-4">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/50 rounded-full flex items-center justify-center"><Clock className="w-5 h-5 text-blue-600 dark:text-blue-400" /></div>
+                    <span className="font-medium">Active Bookings</span>
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Contact</p>
-                    <p>{reservationDetails.contact.email}</p>
-                    <p>{reservationDetails.contact.phone}</p>
+                  <span className="font-bold text-xl text-blue-600 dark:text-blue-400">{quickStats.active}</span>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-red-50 dark:bg-red-950/30 rounded-lg border border-red-200 dark:border-red-800">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-red-100 dark:bg-red-900/50 rounded-full flex items-center justify-center"><XCircle className="w-5 h-5 text-red-600 dark:text-red-400" /></div>
+                    <span className="font-medium">Cancelled</span>
                   </div>
+                  <span className="font-bold text-xl text-red-600 dark:text-red-400">{quickStats.cancelled}</span>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200 dark:border-green-800">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-green-100 dark:bg-green-900/50 rounded-full flex items-center justify-center"><CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400" /></div>
+                    <span className="font-medium">Completed</span>
+                  </div>
+                  <span className="font-bold text-xl text-green-600 dark:text-green-400">{quickStats.completed}</span>
+                </div>
+                <div className="flex items-center justify-between p-4 bg-gradient-to-r from-primary/10 to-primary/5 rounded-lg border-2 border-primary/30 mt-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-primary/20 rounded-full flex items-center justify-center"><TrendingUp className="w-5 h-5 text-primary" /></div>
+                    <span className="font-bold">Total Revenue</span>
+                  </div>
+                  <span className="font-bold text-2xl text-primary">₱{quickStats.totalRevenue.toLocaleString()}</span>
                 </div>
               </div>
             </CardContent>
           </Card>
-          
-          <div className="mt-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Quick Stats</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Active Bookings</span>
-                    <span className="font-medium text-blue-600">0</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Cancelled</span>
-                    <span className="font-medium text-blue-600">0</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Completed</span>
-                    <span className="font-medium text-blue-600">0</span>
-                  </div>
-                  <div className="flex justify-between pt-2 border-t mt-2">
-                    <span className="font-medium">Total Revenue</span>
-                    <span className="font-medium text-blue-600">₱0</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
         </div>
       </div>
     </div>

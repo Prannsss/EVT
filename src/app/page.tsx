@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { Button } from "../components/ui/button";
 import { PlaceHolderImages } from "../lib/placeholder-images";
 import Tour3D from "../components/Tour3D";
@@ -9,6 +10,13 @@ import Tour3D from "../components/Tour3D";
 export default function Home() {
   const heroImage = PlaceHolderImages.find(p => p.id === 'hero');
   const tourImages = PlaceHolderImages.filter(p => p.id.startsWith('tour-'));
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    // Check if user is logged in
+    const token = localStorage.getItem("token");
+    setIsLoggedIn(!!token);
+  }, []);
 
   return (
     <div className="flex flex-col">
@@ -31,13 +39,17 @@ export default function Home() {
             Discover a sanctuary of peace and tranquility nestled in the heart of nature. Your perfect escape awaits.
           </p>
           <Button asChild size="lg" className="mt-8">
-            <Link href="/signup">Book Your Stay</Link>
+            {isLoggedIn ? (
+              <Link href="/client/booking">View Your Bookings</Link>
+            ) : (
+              <Link href="/signup">Book Your Stay</Link>
+            )}
           </Button>
         </div>
       </section>
 
       <section className="bg-background py-16 md:py-20">
-        <div className="container text-center">
+        <div className="page-container text-center">
             <h2 className="text-3xl md:text-4xl font-bold font-headline">About Us</h2>
             <p className="mt-4 max-w-3xl mx-auto text-muted-foreground italic">
                 Founded on the principles of harmony with nature, Elimar Spring Garden is more than just a resort—it's an experience. We are dedicated to providing a serene and luxurious retreat where our guests can reconnect with the environment and themselves. Our commitment to sustainability and local culture is at the heart of everything we do, ensuring an unforgettable stay that is both indulgent and responsible.
@@ -45,7 +57,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="container py-12 md:py-24">
+      <section className="page-container py-12 md:py-24">
         <Tour3D />
       </section>
     </div>

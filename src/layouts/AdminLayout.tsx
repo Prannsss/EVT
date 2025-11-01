@@ -5,6 +5,8 @@ import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/s
 import { usePathname } from 'next/navigation';
 import { AdminSidebar } from '@/components/admin-sidebar';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { NotificationDropdown } from '@/components/NotificationDropdown';
+import { NotificationPoller } from '@/components/NotificationPoller';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,7 +17,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Bell, Search, User, Settings, LogOut, Upload } from 'lucide-react';
+import { User, Settings, LogOut, Upload } from 'lucide-react';
 import Link from 'next/link';
 
 interface AdminLayoutProps {
@@ -45,7 +47,8 @@ export default function AdminLayout({
 
   return (
     <SidebarProvider defaultOpen>
-  <div className="flex min-h-screen w-full bg-background text-foreground">
+      <NotificationPoller />
+      <div className="flex min-h-screen w-full bg-background text-foreground">
         <AdminSidebar />
         
         <SidebarInset className="flex flex-col flex-1">
@@ -69,26 +72,8 @@ export default function AdminLayout({
 
               {/* Right Side Actions */}
               <div className="flex items-center gap-2">
-                {/* Search Button */}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="rounded-full"
-                  aria-label="Search"
-                >
-                  <Search className="h-5 w-5" />
-                </Button>
-
                 {/* Notifications */}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="rounded-full relative"
-                  aria-label="Notifications"
-                >
-                  <Bell className="h-5 w-5" />
-                  <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-                </Button>
+                <NotificationDropdown />
 
                 {/* Theme Toggle */}
                 {/* Show gallery action in header when on the gallery page */}

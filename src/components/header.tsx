@@ -2,8 +2,8 @@
 "use client";
 
 import Link from "next/link";
-import { Menu } from "lucide-react";
-import { usePathname } from "next/navigation";
+import { Menu, LogOut } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
 import * as React from "react";
 
 import { cn } from "../lib/utils";
@@ -19,11 +19,45 @@ const navLinks = [
 
 export function Header() {
   const pathname = usePathname();
+  const router = useRouter();
   const [open, setOpen] = React.useState(false);
+  const [isLoggedIn, setIsLoggedIn] = React.useState(false);
+  const [userName, setUserName] = React.useState("");
+  const [isLoggingOut, setIsLoggingOut] = React.useState(false);
+
+  React.useEffect(() => {
+    // Check if user is logged in
+    const token = localStorage.getItem("token");
+    const user = localStorage.getItem("user");
+    
+    if (token && user) {
+      setIsLoggedIn(true);
+      try {
+        const userData = JSON.parse(user);
+        setUserName(userData.name || "User");
+      } catch (e) {
+        console.error("Failed to parse user data:", e);
+      }
+    }
+  }, []);
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    
+    // Simulate a brief delay for better UX
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    setIsLoggedIn(false);
+    setUserName("");
+    setIsLoggingOut(false);
+    router.push("/");
+  };
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-16 items-center px-4 sm:px-8 md:px-12 lg:px-16 xl:px-20">
+      <div className="w-full max-w-[1400px] mx-auto flex h-16 items-center px-4 sm:px-8 md:px-12 lg:px-16 xl:px-20">
         {/* Desktop Nav: Left side */}
         <div className="flex-1 hidden md:flex">
           <Link href="/" className="flex items-center">
@@ -94,9 +128,37 @@ export function Header() {
         
         <div className="flex-1 flex items-center justify-end gap-2">
           <ThemeToggle />
-          <Button asChild>
+          {isLoggedIn ? (
+            <>
+              <span className="text-sm text-muted-foreground hidden sm:inline">
+                Welcome, {userName}
+              </span>
+              <Button 
+                variant="destructive" 
+                onClick={handleLogout}
+                disabled={isLoggingOut}
+              >
+                {isLoggingOut ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Logging out...
+                  </>
+                ) : (
+                  <>
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Logout
+                  </>
+                )}
+              </Button>
+            </>
+          ) : (
+            <Button asChild>
               <Link href="/login">Login</Link>
-          </Button>
+            </Button>
+          )}
         </div>
       </div>
     </header>

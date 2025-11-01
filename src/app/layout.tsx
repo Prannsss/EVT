@@ -10,6 +10,7 @@ import './globals.css';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { MapPin, Phone, Home, ImageIcon, LogIn } from 'lucide-react';
 
 
 function AuthLayout({ children }: { children: React.ReactNode }) {
@@ -100,33 +101,53 @@ export default function RootLayout({
         <ThemeProvider>
           <Header />
           <main className="flex-1">{children}</main>
-          <footer className="bg-primary text-primary-foreground py-8 px-4 sm:px-8 md:px-12 lg:px-16 xl:px-20">
-              <div className="container grid grid-cols-1 md:grid-cols-3 gap-8">
-                <div className="flex flex-col gap-2">
-                  <h3 className="font-bold font-headline text-lg">Elimar Spring Garden</h3>
-                  <p className="text-sm">A sanctuary of peace and tranquility.</p>
+          <footer className="bg-primary text-primary-foreground py-12 mt-16">
+            <div className="w-full max-w-[1400px] mx-auto px-4 sm:px-8 md:px-12 lg:px-16 xl:px-20">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+                <div className="flex flex-col gap-3">
+                  <h3 className="font-bold font-headline text-xl mb-2">Elimar Spring Garden</h3>
+                  <p className="text-sm opacity-90">A sanctuary of peace and tranquility.</p>
                 </div>
                 <div>
-                  <h3 className="font-bold font-headline text-lg mb-2">Quick Links</h3>
-                  <nav className="flex flex-col gap-2 text-sm">
-                    <Link href="/" className="hover:underline">Home</Link>
-                    <Link href="/client/accommodations" className="hover:underline">Accommodations</Link>
-                    <Link href="/client/gallery" className="hover:underline">Gallery</Link>
-                    <Link href="/login" className="hover:underline">Login</Link>
+                  <h3 className="font-bold font-headline text-xl mb-4">Quick Links</h3>
+                  <nav className="flex flex-col gap-3 text-sm">
+                    <Link href="/" className="hover:underline flex items-center gap-2 opacity-90 hover:opacity-100 transition-opacity">
+                      <Home className="w-4 h-4" />
+                      Home
+                    </Link>
+                    <Link href="/client/accommodations" className="hover:underline flex items-center gap-2 opacity-90 hover:opacity-100 transition-opacity">
+                      <Home className="w-4 h-4" />
+                      Accommodations
+                    </Link>
+                    <Link href="/client/gallery" className="hover:underline flex items-center gap-2 opacity-90 hover:opacity-100 transition-opacity">
+                      <ImageIcon className="w-4 h-4" />
+                      Gallery
+                    </Link>
+                    <Link href="/login" className="hover:underline flex items-center gap-2 opacity-90 hover:opacity-100 transition-opacity">
+                      <LogIn className="w-4 h-4" />
+                      Login
+                    </Link>
                   </nav>
                 </div>
                 <div>
-                  <h3 className="font-bold font-headline text-lg mb-2">Contact Us</h3>
-                  <div className="text-sm space-y-2">
-                    <p>Barangay Binaobao, Dumangas, Philippines, 5006</p>
-                    <p>Phone: +(63) 905 556 5755</p>
+                  <h3 className="font-bold font-headline text-xl mb-4">Contact Us</h3>
+                  <div className="text-sm space-y-3">
+                    <p className="flex items-start gap-2 opacity-90">
+                      <MapPin className="w-4 h-4 mt-0.5 shrink-0" />
+                      <span>Barangay Binaobao, Dumangas, Philippines, 5006</span>
+                    </p>
+                    <p className="flex items-center gap-2 opacity-90">
+                      <Phone className="w-4 h-4 shrink-0" />
+                      <span>+(63) 905 556 5755</span>
+                    </p>
                   </div>
                 </div>
               </div>
-              <div className="container mt-8 text-center text-sm">
+              <div className="pt-6 border-t border-primary-foreground/20 text-center text-sm opacity-75">
                 <p>&copy; {new Date().getFullYear()} Elimar Spring Garden. All rights reserved.</p>
               </div>
-            </footer>
+            </div>
+          </footer>
           <Toaster />
         </ThemeProvider>
       </body>

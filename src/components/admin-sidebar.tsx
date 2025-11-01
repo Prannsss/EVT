@@ -36,7 +36,7 @@ const mainNavLinks = [
 ];
 
 const contentLinks = [
-  { href: '/admin/rooms', label: 'Rooms', icon: Home },
+  { href: '/admin/accommodations', label: 'Accommodations', icon: Home },
   { href: '/admin/reports', label: 'Reports', icon: FileText },
 ];
 
@@ -60,22 +60,23 @@ export function AdminSidebar() {
                 const isActive = pathname === link.href || pathname.startsWith(link.href + '/');
                 return (
                   <SidebarMenuItem key={link.href}>
-                    <Link href={link.href} passHref legacyBehavior>
-                      <SidebarMenuButton
-                        isActive={isActive}
-                        tooltip={link.label}
-                        className={
-                          `transition-all duration-150 rounded-lg px-3 py-2 flex items-center gap-3 ${
-                            isActive
-                              ? 'bg-blue-600 text-white font-semibold'
-                              : 'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
-                          }`
-                      }
-                      >
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isActive}
+                      tooltip={link.label}
+                      className={
+                        `transition-all duration-150 rounded-lg px-3 py-2 flex items-center gap-3 ${
+                          isActive
+                            ? 'bg-blue-600 text-white font-semibold'
+                            : 'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                        }`
+                    }
+                    >
+                      <Link href={link.href}>
                         <link.icon className={isActive ? 'w-5 h-5' : 'w-5 h-5'} />
                         <span>{link.label}</span>
-                      </SidebarMenuButton>
-                    </Link>
+                      </Link>
+                    </SidebarMenuButton>
                   </SidebarMenuItem>
                 );
               })}
@@ -96,22 +97,23 @@ export function AdminSidebar() {
                 const isActive = pathname === link.href || pathname.startsWith(link.href + '/');
                 return (
                   <SidebarMenuItem key={link.href}>
-                    <Link href={link.href} passHref legacyBehavior>
-                      <SidebarMenuButton
-                        isActive={isActive}
-                        tooltip={link.label}
-                        className={
-                          `transition-all duration-200 rounded-lg ${
-                            isActive
-                              ? 'bg-blue-600 text-white font-semibold hover:bg-blue-700'
-                              : 'hover:bg-neutral-100 dark:hover:bg-neutral-800'
-                          }`
-                        }
-                      >
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isActive}
+                      tooltip={link.label}
+                      className={
+                        `transition-all duration-200 rounded-lg ${
+                          isActive
+                            ? 'bg-blue-600 text-white font-semibold hover:bg-blue-700'
+                            : 'hover:bg-neutral-100 dark:hover:bg-neutral-800'
+                        }`
+                      }
+                    >
+                      <Link href={link.href}>
                         <link.icon className="w-5 h-5" />
                         <span>{link.label}</span>
-                      </SidebarMenuButton>
-                    </Link>
+                      </Link>
+                    </SidebarMenuButton>
                   </SidebarMenuItem>
                 );
               })}
@@ -129,23 +131,24 @@ export function AdminSidebar() {
                 const isActive = pathname === link.href || pathname.startsWith(link.href + '/');
                 return (
                   <SidebarMenuItem key={link.href}>
-                    <Link href={link.href} passHref legacyBehavior>
-                      <SidebarMenuButton
-                        isActive={isActive}
-                        tooltip={link.label}
-                        className={`
-                          transition-all duration-200 rounded-lg
-                          ${
-                            isActive
-                              ? 'bg-blue-100 dark:bg-blue-900 font-semibold text-blue-800 dark:text-blue-200'
-                              : 'hover:bg-neutral-100 dark:hover:bg-neutral-800'
-                          }
-                        `}
-                      >
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isActive}
+                      tooltip={link.label}
+                      className={`
+                        transition-all duration-200 rounded-lg
+                        ${
+                          isActive
+                            ? 'bg-blue-100 dark:bg-blue-900 font-semibold text-blue-800 dark:text-blue-200'
+                            : 'hover:bg-neutral-100 dark:hover:bg-neutral-800'
+                        }
+                      `}
+                    >
+                      <Link href={link.href}>
                         <link.icon className="w-5 h-5" />
                         <span>{link.label}</span>
-                      </SidebarMenuButton>
-                    </Link>
+                      </Link>
+                    </SidebarMenuButton>
                   </SidebarMenuItem>
                 );
               })}
@@ -158,7 +161,7 @@ export function AdminSidebar() {
       <SidebarFooter className="border-t border-neutral-200 dark:border-neutral-800 p-4">
         <Button
           asChild
-          variant="outline"
+          variant="destructive"
           className="w-full justify-start group-data-[collapsible=icon]:justify-center"
         >
           <Link href="/login">

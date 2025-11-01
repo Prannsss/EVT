@@ -1,0 +1,28 @@
+{
+  "name": "Backend Development",
+  "tasks": [
+    {
+      "label": "Start Backend Dev Server",
+      "type": "shell",
+      "command": "cd backend && npm run dev",
+      "problemMatcher": [],
+      "isBackground": true,
+      "group": "build"
+    },
+    {
+      "label": "Build Backend",
+      "type": "shell",
+      "command": "cd backend && npm run build",
+      "problemMatcher": ["$tsc"],
+      "group": "build"
+    },
+    {
+      "label": "Start Backend Production",
+      "type": "shell",
+      "command": "cd backend && npm start",
+      "problemMatcher": [],
+      "group": "build"
+    }
+  ],
+  "version": "2.0.0"
+}
