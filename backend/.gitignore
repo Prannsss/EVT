@@ -51,13 +51,6 @@ lerna-debug.log*
 # typescript
 *.tsbuildinfo
 
-# Database
-database/*.sql.backup
-database/backups/
-*.dump
-*.sql.gz
-*.sql.zip
-
 # Logs
 logs/
 *.log
