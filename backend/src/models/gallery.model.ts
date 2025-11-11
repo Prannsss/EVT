@@ -19,8 +19,8 @@ export const getGalleryImageById = async (id: number): Promise<Gallery | null> =
 
 export const createGalleryImage = async (data: GalleryCreate): Promise<number> => {
   const [result] = await pool.query<ResultSetHeader>(
-    'INSERT INTO gallery (title, image_url, description) VALUES (?, ?, ?)',
-    [data.title || null, data.image_url, data.description || null]
+    'INSERT INTO gallery (image_url, description) VALUES (?, ?)',
+    [data.image_url, data.description || null]
   );
   return result.insertId;
 };

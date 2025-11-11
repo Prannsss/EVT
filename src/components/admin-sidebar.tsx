@@ -2,7 +2,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutDashboard,
   Users,
@@ -46,6 +46,16 @@ const settingsLinks = [
 
 export function AdminSidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+
+  const handleLogout = () => {
+    // Clear all authentication data
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    
+    // Redirect to login page
+    router.push('/login');
+  };
 
   return (
     <Sidebar collapsible="icon" className="border-r border-border bg-sidebar">
@@ -160,16 +170,14 @@ export function AdminSidebar() {
       {/* Footer with Quick Actions */}
       <SidebarFooter className="border-t border-neutral-200 dark:border-neutral-800 p-4">
         <Button
-          asChild
           variant="destructive"
           className="w-full justify-start group-data-[collapsible=icon]:justify-center"
+          onClick={handleLogout}
         >
-          <Link href="/login">
-            <LogOut className="w-4 h-4 mr-2 group-data-[collapsible=icon]:mr-0" />
-            <span className="group-data-[collapsible=icon]:hidden">
-              Logout
-            </span>
-          </Link>
+          <LogOut className="w-4 h-4 mr-2 group-data-[collapsible=icon]:mr-0" />
+          <span className="group-data-[collapsible=icon]:hidden">
+            Logout
+          </span>
         </Button>
       </SidebarFooter>
     </Sidebar>

@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { User, Mail, Calendar, Search, Loader2, AlertCircle, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { API_URL } from '@/lib/utils';
 
 interface ClientData {
   id: number;
@@ -53,7 +54,7 @@ export default function ClientsPage() {
         return;
       }
 
-      const response = await fetch('http://localhost:5000/api/auth/clients', {
+      const response = await fetch(`${API_URL}/api/auth/clients`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },

@@ -10,8 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { Loader2, AlertCircle, Home, Sparkles } from 'lucide-react'
 import BookingModal from '@/components/BookingModal'
 import EventBookingModal from '@/components/EventBookingModal'
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+import { API_URL } from '@/lib/utils';
 
 interface Accommodation {
   id: number;
@@ -75,6 +74,8 @@ export default function AccommodationsPage() {
   }
 
   const AccommodationCard = ({ accommodation }: { accommodation: Accommodation }) => {
+    const [currentImageIndex, setCurrentImageIndex] = useState(0);
+    
     // Parse inclusions (split by newline if it's a string)
     const inclusionsList = accommodation.inclusions 
       ? accommodation.inclusions.split('\n').filter(item => item.trim()) 
@@ -83,16 +84,16 @@ export default function AccommodationsPage() {
     // Format price (ensure it's a number)
     const formattedPrice = `₱${Number(accommodation.price).toFixed(2)}`;
 
-    // Get full image URL - handle JSON array or single image
-    let imageUrl = '/placeholder-room.svg';
+    // Get full image URLs - handle JSON array or single image
+    let imageUrls: string[] = ['/placeholder-room.svg'];
     try {
       if (accommodation.image_url) {
         // Try to parse as JSON array
         const parsedImages = JSON.parse(accommodation.image_url);
         if (Array.isArray(parsedImages) && parsedImages.length > 0) {
-          imageUrl = parsedImages[0].startsWith('http') 
-            ? parsedImages[0] 
-            : `${API_URL}${parsedImages[0]}`;
+          imageUrls = parsedImages.map(img => 
+            img.startsWith('http') ? img : `${API_URL}${img}`
+          );
         } else {
           throw new Error('Not an array');
         }
@@ -100,18 +101,29 @@ export default function AccommodationsPage() {
     } catch {
       // If not JSON, treat as single image path
       if (accommodation.image_url) {
-        imageUrl = accommodation.image_url.startsWith('http') 
+        const singleImage = accommodation.image_url.startsWith('http') 
           ? accommodation.image_url 
           : `${API_URL}${accommodation.image_url}`;
+        imageUrls = [singleImage];
       }
     }
 
+    const handlePreviousImage = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      setCurrentImageIndex((prev) => (prev === 0 ? imageUrls.length - 1 : prev - 1));
+    };
+
+    const handleNextImage = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      setCurrentImageIndex((prev) => (prev === imageUrls.length - 1 ? 0 : prev + 1));
+    };
+
     return (
       <Card className="overflow-hidden hover:shadow-xl transition-all duration-300 hover:scale-[1.02] group border-2 flex flex-col h-full">
-        <div className="relative w-full aspect-[4/3] bg-muted">
+        <div className="relative w-full aspect-[4/3] bg-muted group/image">
           <Image
-            src={imageUrl}
-            alt={accommodation.name}
+            src={imageUrls[currentImageIndex]}
+            alt={`${accommodation.name} - Image ${currentImageIndex + 1}`}
             fill
             style={{objectFit: "cover"}}
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
@@ -121,6 +133,35 @@ export default function AccommodationsPage() {
               (e.target as HTMLImageElement).src = '/placeholder-room.svg';
             }}
           />
+          
+          {/* Navigation Arrows - Only show if multiple images */}
+          {imageUrls.length > 1 && (
+            <>
+              <button
+                onClick={handlePreviousImage}
+                className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full opacity-0 group-hover/image:opacity-100 transition-opacity duration-200 z-10"
+                aria-label="Previous image"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+              </button>
+              <button
+                onClick={handleNextImage}
+                className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full opacity-0 group-hover/image:opacity-100 transition-opacity duration-200 z-10"
+                aria-label="Next image"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                </svg>
+              </button>
+              
+              {/* Image Counter */}
+              <div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded-full">
+                {currentImageIndex + 1} / {imageUrls.length}
+              </div>
+            </>
+          )}
         </div>
         <CardHeader className="pb-4">
           <div className="flex items-start justify-between gap-2">

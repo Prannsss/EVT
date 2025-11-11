@@ -20,10 +20,12 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "./ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select"
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover"
 import { Calendar as CalendarComponent } from "./ui/calendar"
-import { Plus, Minus, Clock, Calendar, Loader2 } from "lucide-react"
+import { Plus, Minus, Clock, Calendar, Loader2, AlertCircle, Info } from "lucide-react"
 import Accommodation3D from "./Accommodation3D"
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+import { API_URL } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
+import { useAvailability } from "@/hooks/use-availability";
+import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
 
 interface Accommodation {
   id: number;
@@ -59,9 +61,15 @@ interface DynamicPricing {
 
 export default function BookingModal({ accommodation, isOpen, onClose }: BookingModalProps) {
   const router = useRouter()
+  const { toast } = useToast()
+  const { checkRegularAvailability, getUnavailableDates, getEventConflicts } = useAvailability()
+  
   const [adultCount, setAdultCount] = useState(0)
   const [kidCount, setKidCount] = useState(0)
   const [pwdCount, setPwdCount] = useState(0)
+  const [adultSwimming, setAdultSwimming] = useState(0)
+  const [kidSwimming, setKidSwimming] = useState(0)
+  const [pwdSwimming, setPwdSwimming] = useState(0)
   const [overnightStay, setOvernightStay] = useState(false)
   const [overnightSwimming, setOvernightSwimming] = useState(false)
   const [proofOfPayment, setProofOfPayment] = useState<File | null>(null)
@@ -69,6 +77,15 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
   const [activeTab, setActiveTab] = useState("details")
   const [bookingDate, setBookingDate] = useState<Date | undefined>(undefined)
   const [bookingTime, setBookingTime] = useState("09:00")
+  const [currentImageIndex, setCurrentImageIndex] = useState(0)
+  
+  // Availability state
+  const [unavailableDates, setUnavailableDates] = useState<string[]>([])
+  const [partiallyAvailableDates, setPartiallyAvailableDates] = useState<Map<string, string[]>>(new Map())
+  const [availabilityMessage, setAvailabilityMessage] = useState<string | null>(null)
+  const [availabilityType, setAvailabilityType] = useState<'info' | 'warning' | 'error'>('info')
+  const [checkingAvailability, setCheckingAvailability] = useState(false)
+  const [availableTimeSlots, setAvailableTimeSlots] = useState<string[]>(['morning', 'afternoon', 'whole_day'])
   
   // Dynamic pricing state
   const [pricing, setPricing] = useState<DynamicPricing | null>(null)
@@ -124,15 +141,133 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
     }
   }, [isOpen])
 
-  // Generate time options from 9am to 5pm
-  const timeOptions = []
-  for (let hour = 9; hour <= 17; hour++) {
-    const time24 = `${hour.toString().padStart(2, '0')}:00`
-    const hour12 = hour > 12 ? hour - 12 : hour
-    const period = hour >= 12 ? 'PM' : 'AM'
-    const time12Format = `${hour12}:00 ${period}`
-    timeOptions.push({ value: time24, label: time12Format })
-  }
+  // Fetch unavailable dates when modal opens
+  useEffect(() => {
+    const fetchUnavailableDates = async () => {
+      if (!isOpen || !accommodation) return
+      
+      const today = new Date()
+      const threeMonthsLater = new Date()
+      threeMonthsLater.setMonth(today.getMonth() + 3)
+      
+      const startDate = today.toISOString().split('T')[0]
+      const endDate = threeMonthsLater.toISOString().split('T')[0]
+      
+      const result = await getUnavailableDates(accommodation.id, startDate, endDate)
+      
+      if (result) {
+        setUnavailableDates(result.dates)
+        
+        // Store partially available dates
+        const partialMap = new Map<string, string[]>()
+        result.partiallyAvailable.forEach(item => {
+          partialMap.set(item.date, item.availableSlots)
+        })
+        setPartiallyAvailableDates(partialMap)
+      }
+    }
+    
+    fetchUnavailableDates()
+  }, [isOpen, accommodation, getUnavailableDates])
+
+  // Check availability when date changes
+  useEffect(() => {
+    const checkAvailability = async () => {
+      if (!bookingDate || !accommodation) {
+        setAvailabilityMessage(null)
+        setAvailableTimeSlots(['morning', 'afternoon', 'whole_day'])
+        return
+      }
+      
+      setCheckingAvailability(true)
+      const dateStr = bookingDate.toISOString().split('T')[0]
+      
+      // First check event conflicts
+      const eventConflicts = await getEventConflicts(dateStr)
+      
+      if (eventConflicts) {
+        if (eventConflicts.hasWholeDay) {
+          setAvailabilityMessage('⚠️ This date is reserved for a whole-day event. Please select another date.')
+          setAvailabilityType('error')
+          setAvailableTimeSlots([])
+          setCheckingAvailability(false)
+          return
+        }
+        
+        if (eventConflicts.hasMorning && eventConflicts.hasEvening) {
+          setAvailabilityMessage('⚠️ This date has both morning and evening events. Please select another date.')
+          setAvailabilityType('error')
+          setAvailableTimeSlots([])
+          setCheckingAvailability(false)
+          return
+        }
+        
+        if (eventConflicts.hasMorning) {
+          setAvailabilityMessage('ℹ️ Only afternoon slot (1:00 PM - 5:00 PM) is available due to a morning event.')
+          setAvailabilityType('info')
+          setAvailableTimeSlots(['afternoon'])
+        } else if (eventConflicts.hasEvening) {
+          setAvailabilityMessage('ℹ️ Only morning slot (9:00 AM - 12:00 PM) is available due to an evening event.')
+          setAvailabilityType('info')
+          setAvailableTimeSlots(['morning'])
+        } else {
+          // No event conflicts, check regular bookings
+          const result = await checkRegularAvailability(accommodation.id, dateStr)
+          
+          if (result && !result.available) {
+            setAvailabilityMessage(`⚠️ ${result.reason || 'This date is not available'}`)
+            setAvailabilityType('error')
+            setAvailableTimeSlots([])
+          } else {
+            setAvailabilityMessage('✅ This date is available!')
+            setAvailabilityType('info')
+            setAvailableTimeSlots(['morning', 'afternoon', 'whole_day'])
+          }
+        }
+      }
+      
+      setCheckingAvailability(false)
+    }
+    
+    checkAvailability()
+  }, [bookingDate, accommodation, getEventConflicts, checkRegularAvailability])
+
+  // Generate time options based on available slots
+  const timeOptions = useMemo(() => {
+    const options = []
+    
+    // Determine which hours to show based on available slots
+    const showMorning = availableTimeSlots.includes('morning') || availableTimeSlots.includes('whole_day')
+    const showAfternoon = availableTimeSlots.includes('afternoon') || availableTimeSlots.includes('whole_day')
+    
+    for (let hour = 9; hour <= 17; hour++) {
+      // Morning: 9 AM - 12 PM
+      const isMorning = hour >= 9 && hour < 13
+      // Afternoon: 1 PM - 5 PM  
+      const isAfternoon = hour >= 13 && hour <= 17
+      
+      // Skip if slot is not available
+      if ((isMorning && !showMorning) || (isAfternoon && !showAfternoon)) {
+        continue
+      }
+      
+      const time24 = `${hour.toString().padStart(2, '0')}:00`
+      const hour12 = hour > 12 ? hour - 12 : hour
+      const period = hour >= 12 ? 'PM' : 'AM'
+      const time12Format = `${hour12}:00 ${period}`
+      
+      let label = time12Format
+      if (isMorning && availableTimeSlots.includes('morning') && !availableTimeSlots.includes('whole_day')) {
+        label += ' (Morning slot only)'
+      } else if (isAfternoon && availableTimeSlots.includes('afternoon') && !availableTimeSlots.includes('whole_day')) {
+        label += ' (Afternoon slot only)'
+      }
+      
+      options.push({ value: time24, label })
+    }
+    
+    return options
+  }, [availableTimeSlots])
 
   // Calculate total price dynamically
   const totalPrice = useMemo(() => {
@@ -143,15 +278,13 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
     // Add accommodation base price (ensure it's a number)
     total += Number(accommodation.price)
 
-    // Add entrance fees
+    // Add entrance fees only
     total += adultCount * pricing.entrance.adult
     total += (kidCount + pwdCount) * pricing.entrance.kids_senior_pwd
 
-    // Add swimming fees (if it's a cottage, rooms have free swimming)
-    if (accommodation.type === 'cottage') {
-      total += adultCount * pricing.swimming.adult
-      total += (kidCount + pwdCount) * pricing.swimming.kids_senior_pwd
-    }
+    // Add swimming fees based on checkboxes
+    total += adultSwimming * pricing.swimming.adult
+    total += (kidSwimming + pwdSwimming) * pricing.swimming.kids_senior_pwd
 
     // Add overnight swimming fee
     if (overnightSwimming) {
@@ -159,7 +292,7 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
     }
 
     return total
-  }, [accommodation, pricing, adultCount, kidCount, pwdCount, overnightSwimming])
+  }, [accommodation, pricing, adultCount, kidCount, pwdCount, adultSwimming, kidSwimming, pwdSwimming, overnightSwimming])
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -175,78 +308,136 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
     }
   }
 
-  const handleBookNow = () => {
-    // Check if user is logged in (placeholder - replace with actual auth check)
-    const isLoggedIn = false // TODO: Replace with actual auth state check
+  const handleBookNow = async () => {
+    try {
+      // Check if user is logged in by checking localStorage
+      const token = localStorage.getItem('token');
+      const userStr = localStorage.getItem('user');
+      const isLoggedIn = !!(token && userStr);
 
-    if (!isLoggedIn) {
-      // Store booking data in sessionStorage
-      const bookingData = {
-        accommodationId: accommodation?.id,
-        accommodationName: accommodation?.name,
-        adults: adultCount,
-        kids: kidCount,
-        pwd: pwdCount,
-        overnightStay,
-        overnightSwimming,
-        bookingTime,
-        totalPrice,
-        timestamp: new Date().toISOString()
+      if (!isLoggedIn) {
+        // Store booking data in sessionStorage
+        const bookingData = {
+          accommodationId: accommodation?.id,
+          accommodationName: accommodation?.name,
+          adults: adultCount,
+          kids: kidCount,
+          pwd: pwdCount,
+          overnightStay,
+          overnightSwimming,
+          bookingTime,
+          totalPrice,
+          timestamp: new Date().toISOString()
+        }
+        sessionStorage.setItem('pendingBooking', JSON.stringify(bookingData))
+        
+        // Redirect to signup/login
+        toast({
+          title: "Login Required",
+          description: "Please sign up or log in to complete your booking",
+          variant: "default",
+        })
+        router.push('/signup')
+        return
       }
-      sessionStorage.setItem('pendingBooking', JSON.stringify(bookingData))
-      
-      // Redirect to signup/login
-      alert("Please sign up or log in to complete your booking")
-      router.push('/signup')
-      return
-    }
 
-    // If logged in, proceed with booking
-    // In a real app, this would create a notification via API
-    // For now, we'll use localStorage to simulate cross-tab communication
-    const notificationData = {
-      type: 'booking',
-      title: 'New Booking Request',
-      message: `New booking for ${accommodation?.name}`,
-      clientName: 'Guest User', // TODO: Replace with actual user name
-      accommodationType: accommodation?.type,
-      bookingTime,
-      totalPrice,
-      timestamp: new Date().toISOString()
+      // Validate required fields
+      if (!bookingDate) {
+        toast({
+          title: "Missing Information",
+          description: "Please select a booking date",
+          variant: "destructive",
+        })
+        return
+      }
+
+      if (adultCount + kidCount + pwdCount === 0) {
+        toast({
+          title: "Missing Information",
+          description: "Please add at least one guest",
+          variant: "destructive",
+        })
+        return
+      }
+
+      if (!proofOfPayment) {
+        toast({
+          title: "Payment Proof Required",
+          description: "Please upload proof of payment to proceed",
+          variant: "destructive",
+        })
+        return
+      }
+
+      // Create FormData for multipart/form-data request
+      const formData = new FormData()
+      formData.append('accommodation_id', accommodation!.id.toString())
+      
+      // Format date properly to avoid timezone offset issues
+      const year = bookingDate.getFullYear()
+      const month = String(bookingDate.getMonth() + 1).padStart(2, '0')
+      const day = String(bookingDate.getDate()).padStart(2, '0')
+      const localDateString = `${year}-${month}-${day}`
+      
+      formData.append('check_in_date', localDateString)
+      formData.append('booking_time', bookingTime + ':00') // Convert HH:mm to HH:mm:ss
+      formData.append('adults', adultCount.toString())
+      formData.append('kids', kidCount.toString())
+      formData.append('pwd', pwdCount.toString())
+      formData.append('overnight_stay', overnightStay.toString())
+      formData.append('overnight_swimming', overnightSwimming.toString())
+      formData.append('total_price', totalPrice.toString())
+      formData.append('proof_of_payment', proofOfPayment)
+
+      // Send booking to API
+      const response = await fetch(`${API_URL}/api/bookings`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: formData,
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to create booking')
+      }
+
+      toast({
+        title: "Booking Submitted Successfully! 🎉",
+        description: `Your booking for ₱${totalPrice.toLocaleString('en-PH')} has been submitted. Please wait for admin confirmation.`,
+        variant: "default",
+      })
+      
+      handleClose()
+      
+      // Optionally redirect to bookings page
+      setTimeout(() => router.push('/client/accommodations'), 1000)
+    } catch (error) {
+      console.error('Booking error:', error)
+      toast({
+        title: "Booking Failed",
+        description: error instanceof Error ? error.message : 'Failed to submit booking. Please try again.',
+        variant: "destructive",
+      })
     }
-    
-    // Store in localStorage for admin to pick up
-    const existingNotifications = localStorage.getItem('pendingNotifications')
-    const notifications = existingNotifications ? JSON.parse(existingNotifications) : []
-    notifications.push(notificationData)
-    localStorage.setItem('pendingNotifications', JSON.stringify(notifications))
-    
-    console.log({
-      accommodation: accommodation?.id,
-      adults: adultCount,
-      kids: kidCount,
-      pwd: pwdCount,
-      overnightStay,
-      overnightSwimming,
-      bookingTime,
-      totalPrice,
-      proofOfPayment: proofOfPayment?.name
-    })
-    
-    alert(`Booking submitted successfully! Total: ₱${totalPrice.toLocaleString('en-PH')}`)
-    handleClose()
   }
 
   const resetForm = () => {
     setAdultCount(0)
     setKidCount(0)
     setPwdCount(0)
+    setAdultSwimming(0)
+    setKidSwimming(0)
+    setPwdSwimming(0)
     setOvernightStay(false)
     setOvernightSwimming(false)
     setProofOfPayment(null)
     setProofOfPaymentPreview(null)
     setBookingDate(undefined)
     setBookingTime("09:00")
+    setCurrentImageIndex(0)
   }
 
   const handleClose = () => {
@@ -262,6 +453,9 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
     return (
       <Dialog open={isOpen} onOpenChange={handleClose}>
         <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Loading</DialogTitle>
+          </DialogHeader>
           <div className="flex flex-col items-center justify-center py-12">
             <Loader2 className="w-12 h-12 animate-spin text-primary mb-4" />
             <p className="text-lg font-medium">Loading pricing information...</p>
@@ -272,15 +466,15 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
   }
 
   // Handle multiple images stored as JSON array or single image string
-  let imageUrl = '/placeholder-room.svg';
+  let imageUrls: string[] = ['/placeholder-room.svg'];
   try {
     if (accommodation.image_url) {
       // Try to parse as JSON array
       const parsedImages = JSON.parse(accommodation.image_url);
       if (Array.isArray(parsedImages) && parsedImages.length > 0) {
-        imageUrl = parsedImages[0].startsWith('http') 
-          ? parsedImages[0] 
-          : `${API_URL}${parsedImages[0]}`;
+        imageUrls = parsedImages.map(img => 
+          img.startsWith('http') ? img : `${API_URL}${img}`
+        );
       } else {
         throw new Error('Not an array');
       }
@@ -288,11 +482,22 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
   } catch {
     // If not JSON, treat as single image path
     if (accommodation.image_url) {
-      imageUrl = accommodation.image_url.startsWith('http') 
+      const singleImage = accommodation.image_url.startsWith('http') 
         ? accommodation.image_url 
         : `${API_URL}${accommodation.image_url}`;
+      imageUrls = [singleImage];
     }
   }
+
+  const handlePreviousImage = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCurrentImageIndex((prev) => (prev === 0 ? imageUrls.length - 1 : prev - 1));
+  };
+
+  const handleNextImage = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCurrentImageIndex((prev) => (prev === imageUrls.length - 1 ? 0 : prev + 1));
+  };
 
   const panoramicUrl = accommodation.panoramic_url?.startsWith('http')
     ? accommodation.panoramic_url
@@ -327,10 +532,10 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
             {/* Left: Image */}
             <div className="w-full rounded-xl overflow-hidden shadow-lg bg-muted border">
-              <div className="relative w-full aspect-[4/3]">
+              <div className="relative w-full aspect-[4/3] group/image">
                 <Image
-                  src={imageUrl}
-                  alt={accommodation.name}
+                  src={imageUrls[currentImageIndex]}
+                  alt={`${accommodation.name} - Image ${currentImageIndex + 1}`}
                   fill
                   sizes="(max-width: 768px) 100vw, 50vw"
                   style={{objectFit: "cover"}}
@@ -339,6 +544,35 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
                     (e.target as HTMLImageElement).src = '/placeholder-room.svg';
                   }}
                 />
+                
+                {/* Navigation Arrows - Only show if multiple images */}
+                {imageUrls.length > 1 && (
+                  <>
+                    <button
+                      onClick={handlePreviousImage}
+                      className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full opacity-0 group-hover/image:opacity-100 transition-opacity duration-200 z-10"
+                      aria-label="Previous image"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={handleNextImage}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full opacity-0 group-hover/image:opacity-100 transition-opacity duration-200 z-10"
+                      aria-label="Next image"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                      </svg>
+                    </button>
+                    
+                    {/* Image Counter */}
+                    <div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded-full">
+                      {currentImageIndex + 1} / {imageUrls.length}
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 
@@ -460,6 +694,128 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
             </div>
           </div>
 
+          {/* Swimming Fee Checkboxes */}
+          {(adultCount > 0 || kidCount > 0 || pwdCount > 0) && (
+            <div className="mb-6">
+              <h4 className="text-lg font-bold mb-4 flex items-center gap-2">
+                <span>🏊</span>
+                Swimming Add-ons
+              </h4>
+              <p className="text-sm text-muted-foreground mb-4">
+                Select which guests will be swimming (₱{pricing?.swimming.adult} per adult, ₱{pricing?.swimming.kids_senior_pwd} per kid/senior/PWD)
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {/* Adult Swimming */}
+                {adultCount > 0 && (
+                  <div className="p-4 border rounded-lg bg-muted/30">
+                    <div className="flex items-center justify-between mb-2">
+                      <Label className="text-sm font-semibold">Adult Swimming</Label>
+                      <span className="text-xs text-muted-foreground">₱{pricing?.swimming.adult} each</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => setAdultSwimming(Math.max(0, adultSwimming - 1))}
+                        disabled={adultSwimming === 0}
+                      >
+                        <Minus className="h-3 w-3" />
+                      </Button>
+                      <span className="w-16 text-center font-medium">
+                        {adultSwimming} / {adultCount}
+                      </span>
+                      <Button 
+                        variant="outline" 
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => setAdultSwimming(Math.min(adultCount, adultSwimming + 1))}
+                        disabled={adultSwimming >= adultCount}
+                      >
+                        <Plus className="h-3 w-3" />
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Subtotal: ₱{(adultSwimming * (pricing?.swimming.adult || 0)).toLocaleString()}
+                    </p>
+                  </div>
+                )}
+
+                {/* Kid Swimming */}
+                {kidCount > 0 && (
+                  <div className="p-4 border rounded-lg bg-muted/30">
+                    <div className="flex items-center justify-between mb-2">
+                      <Label className="text-sm font-semibold">Kid Swimming</Label>
+                      <span className="text-xs text-muted-foreground">₱{pricing?.swimming.kids_senior_pwd} each</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => setKidSwimming(Math.max(0, kidSwimming - 1))}
+                        disabled={kidSwimming === 0}
+                      >
+                        <Minus className="h-3 w-3" />
+                      </Button>
+                      <span className="w-16 text-center font-medium">
+                        {kidSwimming} / {kidCount}
+                      </span>
+                      <Button 
+                        variant="outline" 
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => setKidSwimming(Math.min(kidCount, kidSwimming + 1))}
+                        disabled={kidSwimming >= kidCount}
+                      >
+                        <Plus className="h-3 w-3" />
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Subtotal: ₱{(kidSwimming * (pricing?.swimming.kids_senior_pwd || 0)).toLocaleString()}
+                    </p>
+                  </div>
+                )}
+
+                {/* PWD Swimming */}
+                {pwdCount > 0 && (
+                  <div className="p-4 border rounded-lg bg-muted/30">
+                    <div className="flex items-center justify-between mb-2">
+                      <Label className="text-sm font-semibold">PWD/Senior Swimming</Label>
+                      <span className="text-xs text-muted-foreground">₱{pricing?.swimming.kids_senior_pwd} each</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => setPwdSwimming(Math.max(0, pwdSwimming - 1))}
+                        disabled={pwdSwimming === 0}
+                      >
+                        <Minus className="h-3 w-3" />
+                      </Button>
+                      <span className="w-16 text-center font-medium">
+                        {pwdSwimming} / {pwdCount}
+                      </span>
+                      <Button 
+                        variant="outline" 
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => setPwdSwimming(Math.min(pwdCount, pwdSwimming + 1))}
+                        disabled={pwdSwimming >= pwdCount}
+                      >
+                        <Plus className="h-3 w-3" />
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Subtotal: ₱{(pwdSwimming * (pricing?.swimming.kids_senior_pwd || 0)).toLocaleString()}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Booking Time and Date Selection */}
           <div className="mb-6">
             <h4 className="text-lg font-bold mb-4 flex items-center gap-2">
@@ -486,9 +842,16 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
                       mode="single"
                       selected={bookingDate}
                       onSelect={setBookingDate}
-                      disabled={(date) =>
-                        date < new Date(new Date().setHours(0, 0, 0, 0))
-                      }
+                      disabled={(date) => {
+                        // Disable past dates
+                        if (date < new Date(new Date().setHours(0, 0, 0, 0))) {
+                          return true
+                        }
+                        
+                        // Disable dates with whole-day events or fully booked
+                        const dateStr = date.toISOString().split('T')[0]
+                        return unavailableDates.includes(dateStr)
+                      }}
                       initialFocus
                     />
                   </PopoverContent>
@@ -496,6 +859,23 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
                 <p className="text-xs text-muted-foreground">
                   Choose your booking date
                 </p>
+                
+                {/* Availability Message */}
+                {checkingAvailability && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground mt-2">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Checking availability...</span>
+                  </div>
+                )}
+                
+                {!checkingAvailability && availabilityMessage && (
+                  <Alert variant={availabilityType === 'error' ? 'destructive' : 'default'} className="mt-2">
+                    <Info className="h-4 w-4" />
+                    <AlertDescription className="text-sm">
+                      {availabilityMessage}
+                    </AlertDescription>
+                  </Alert>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="booking-time" className="text-sm font-medium">
@@ -566,27 +946,54 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
               
               {adultCount > 0 && (
                 <div className="flex justify-between text-sm">
-                  <span>Adults ({adultCount}) - Entrance & Swimming</span>
+                  <span>Adults ({adultCount}) - Entrance Fee</span>
                   <span className="font-medium">
-                    ₱{((adultCount * pricing.entrance.adult) + (accommodation.type === 'cottage' ? adultCount * pricing.swimming.adult : 0)).toFixed(2)}
+                    ₱{(adultCount * pricing.entrance.adult).toFixed(2)}
                   </span>
                 </div>
               )}
               
               {kidCount > 0 && (
                 <div className="flex justify-between text-sm">
-                  <span>Kids ({kidCount}) - Entrance & Swimming</span>
+                  <span>Kids ({kidCount}) - Entrance Fee</span>
                   <span className="font-medium">
-                    ₱{((kidCount * pricing.entrance.kids_senior_pwd) + (accommodation.type === 'cottage' ? kidCount * pricing.swimming.kids_senior_pwd : 0)).toFixed(2)}
+                    ₱{(kidCount * pricing.entrance.kids_senior_pwd).toFixed(2)}
                   </span>
                 </div>
               )}
               
               {pwdCount > 0 && (
                 <div className="flex justify-between text-sm">
-                  <span>PWD/Senior ({pwdCount}) - Entrance & Swimming</span>
+                  <span>PWD/Senior ({pwdCount}) - Entrance Fee</span>
                   <span className="font-medium">
-                    ₱{((pwdCount * pricing.entrance.kids_senior_pwd) + (accommodation.type === 'cottage' ? pwdCount * pricing.swimming.kids_senior_pwd : 0)).toFixed(2)}
+                    ₱{(pwdCount * pricing.entrance.kids_senior_pwd).toFixed(2)}
+                  </span>
+                </div>
+              )}
+
+              {adultSwimming > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span>Adults ({adultSwimming}) - Swimming Fee</span>
+                  <span className="font-medium">
+                    ₱{(adultSwimming * pricing.swimming.adult).toFixed(2)}
+                  </span>
+                </div>
+              )}
+
+              {kidSwimming > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span>Kids ({kidSwimming}) - Swimming Fee</span>
+                  <span className="font-medium">
+                    ₱{(kidSwimming * pricing.swimming.kids_senior_pwd).toFixed(2)}
+                  </span>
+                </div>
+              )}
+
+              {pwdSwimming > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span>PWD/Senior ({pwdSwimming}) - Swimming Fee</span>
+                  <span className="font-medium">
+                    ₱{(pwdSwimming * pricing.swimming.kids_senior_pwd).toFixed(2)}
                   </span>
                 </div>
               )}
@@ -597,13 +1004,6 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
                   <span className="font-medium">
                     ₱{((adultCount + kidCount + pwdCount) * pricing.night_swimming.per_head).toFixed(2)}
                   </span>
-                </div>
-              )}
-              
-              {accommodation.type === 'room' && (adultCount + kidCount + pwdCount) > 0 && (
-                <div className="flex justify-between text-sm text-green-600">
-                  <span>Free Swimming (Room Guest)</span>
-                  <span className="font-medium">Included</span>
                 </div>
               )}
               
@@ -689,9 +1089,23 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
           <Button 
             onClick={handleBookNow} 
             className="w-full h-12 text-lg"
-            disabled={!bookingDate || adultCount + kidCount + pwdCount === 0 || !proofOfPayment}
+            disabled={
+              !bookingDate || 
+              adultCount + kidCount + pwdCount === 0 || 
+              !proofOfPayment || 
+              availabilityType === 'error' ||
+              availableTimeSlots.length === 0 ||
+              checkingAvailability
+            }
           >
-            Book Now - ₱{totalPrice.toFixed(2)}
+            {checkingAvailability ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Checking Availability...
+              </>
+            ) : (
+              `Book Now - ₱${totalPrice.toFixed(2)}`
+            )}
           </Button>
           
           {!bookingDate && (
@@ -702,6 +1116,11 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
           {bookingDate && (adultCount + kidCount + pwdCount === 0) && (
             <p className="text-sm text-center text-muted-foreground mt-2">
               Please add at least one guest to proceed
+            </p>
+          )}
+          {bookingDate && availableTimeSlots.length === 0 && (
+            <p className="text-sm text-center text-destructive mt-2">
+              This date is not available. Please select another date.
             </p>
           )}
           {bookingDate && !proofOfPayment && (adultCount + kidCount + pwdCount > 0) && (

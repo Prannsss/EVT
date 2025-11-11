@@ -7,10 +7,13 @@ import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Loader2, CheckCircle } from 'lucide-react';
+import { API_URL } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { toast } = useToast();
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -24,10 +27,15 @@ function LoginForm() {
     // Check if user was redirected after email verification
     if (searchParams.get('verified') === 'true') {
       setShowVerifiedMessage(true);
+      toast({
+        title: "Email Verified! ✓",
+        description: "Your email has been verified successfully. You can now log in.",
+        variant: "default",
+      });
       // Hide message after 5 seconds
       setTimeout(() => setShowVerifiedMessage(false), 5000);
     }
-  }, [searchParams]);
+  }, [searchParams, toast]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { id, value } = e.target;
@@ -41,7 +49,7 @@ function LoginForm() {
     setIsLoading(true);
 
     try {
-      const response = await fetch('http://localhost:5000/api/auth/login', {
+      const response = await fetch(`${API_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -57,17 +65,35 @@ function LoginForm() {
         localStorage.setItem('token', data.data.token);
         localStorage.setItem('user', JSON.stringify(data.data.user));
 
+        toast({
+          title: "Login Successful! ✓",
+          description: `Welcome back, ${data.data.user.name}!`,
+          variant: "default",
+        });
+
         // Redirect based on role
-        if (data.data.user.role === 'admin') {
-          router.push('/admin/dashboard');
-        } else {
-          router.push('/client/accommodations');
-        }
+        setTimeout(() => {
+          if (data.data.user.role === 'admin') {
+            router.push('/admin/dashboard');
+          } else {
+            router.push('/client/accommodations');
+          }
+        }, 500);
       } else {
         setError(data.message || 'Invalid email or password');
+        toast({
+          title: "Login Failed",
+          description: data.message || 'Invalid email or password',
+          variant: "destructive",
+        });
       }
     } catch (err: any) {
       setError('Failed to login. Please try again.');
+      toast({
+        title: "Login Error",
+        description: 'Failed to login. Please check your connection and try again.',
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }

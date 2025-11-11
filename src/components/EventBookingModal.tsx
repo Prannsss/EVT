@@ -16,9 +16,11 @@ import { Label } from "./ui/label"
 import { Input } from "./ui/input"
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover"
 import { Calendar as CalendarComponent } from "./ui/calendar"
-import { Calendar, Loader2, Sparkles } from "lucide-react"
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+import { Calendar, Loader2, Sparkles, Info, AlertCircle } from "lucide-react"
+import { API_URL } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
+import { useAvailability } from "@/hooks/use-availability";
+import { Alert, AlertDescription } from "./ui/alert";
 
 interface EventBookingModalProps {
   isOpen: boolean
@@ -35,11 +37,21 @@ interface DynamicPricing {
 
 export default function EventBookingModal({ isOpen, onClose }: EventBookingModalProps) {
   const router = useRouter()
+  const { toast } = useToast()
+  const { checkEventAvailability, getEventConflicts } = useAvailability()
+  
   const [selectedEvent, setSelectedEvent] = useState<'whole_day' | 'evening' | 'morning' | null>(null)
   const [bookingDate, setBookingDate] = useState<Date | undefined>(undefined)
   const [proofOfPayment, setProofOfPayment] = useState<File | null>(null)
   const [proofOfPaymentPreview, setProofOfPaymentPreview] = useState<string | null>(null)
   const [eventDetails, setEventDetails] = useState("")
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  
+  // Availability state
+  const [availabilityMessage, setAvailabilityMessage] = useState<string | null>(null)
+  const [availabilityType, setAvailabilityType] = useState<'info' | 'warning' | 'error'>('info')
+  const [checkingAvailability, setCheckingAvailability] = useState(false)
+  const [isAvailable, setIsAvailable] = useState(true)
   
   // Dynamic pricing state
   const [pricing, setPricing] = useState<DynamicPricing | null>(null)
@@ -87,6 +99,38 @@ export default function EventBookingModal({ isOpen, onClose }: EventBookingModal
     }
   }, [isOpen])
 
+  // Check availability when date or event type changes
+  useEffect(() => {
+    const checkAvailability = async () => {
+      if (!bookingDate || !selectedEvent) {
+        setAvailabilityMessage(null)
+        setIsAvailable(true)
+        return
+      }
+      
+      setCheckingAvailability(true)
+      const dateStr = bookingDate.toISOString().split('T')[0]
+      
+      const result = await checkEventAvailability(dateStr, selectedEvent)
+      
+      if (result) {
+        setIsAvailable(result.available)
+        
+        if (!result.available) {
+          setAvailabilityMessage(`⚠️ ${result.reason || 'This slot is not available'}`)
+          setAvailabilityType('error')
+        } else {
+          setAvailabilityMessage('✅ This date and time slot is available for your event!')
+          setAvailabilityType('info')
+        }
+      }
+      
+      setCheckingAvailability(false)
+    }
+    
+    checkAvailability()
+  }, [bookingDate, selectedEvent, checkEventAvailability])
+
   // Calculate total price dynamically
   const totalPrice = useMemo(() => {
     if (!pricing || !selectedEvent) return 0
@@ -107,9 +151,11 @@ export default function EventBookingModal({ isOpen, onClose }: EventBookingModal
     }
   }
 
-  const handleBookEvent = () => {
-    // Check if user is logged in (placeholder - replace with actual auth check)
-    const isLoggedIn = false // TODO: Replace with actual auth state check
+  const handleBookEvent = async () => {
+    // Check if user is logged in
+    const token = localStorage.getItem('token');
+    const userStr = localStorage.getItem('user');
+    const isLoggedIn = !!(token && userStr);
 
     if (!isLoggedIn) {
       // Store booking data in sessionStorage
@@ -123,23 +169,88 @@ export default function EventBookingModal({ isOpen, onClose }: EventBookingModal
       sessionStorage.setItem('pendingEventBooking', JSON.stringify(bookingData))
       
       // Redirect to signup/login
-      alert("Please sign up or log in to complete your event booking")
+      toast({
+        title: "Login Required",
+        description: "Please sign up or log in to complete your event booking",
+        variant: "default",
+      })
       router.push('/signup')
       return
     }
 
-    // If logged in, proceed with booking
-    // User info will be retrieved from auth context/session
-    console.log({
-      eventType: selectedEvent,
-      bookingDate,
-      eventDetails,
-      totalPrice,
-      proofOfPayment: proofOfPayment?.name
-    })
-    
-    alert(`Event booking submitted successfully! Total: ₱${totalPrice.toLocaleString('en-PH')}`)
-    handleClose()
+    // Validate required fields
+    if (!selectedEvent || !bookingDate) {
+      toast({
+        title: "Missing Information",
+        description: "Please select an event type and booking date",
+        variant: "destructive",
+      })
+      return;
+    }
+
+    if (!proofOfPayment) {
+      toast({
+        title: "Payment Proof Required",
+        description: "Please upload proof of payment to proceed",
+        variant: "destructive",
+      })
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:9002';
+      
+      // Create FormData for file upload
+      const formData = new FormData();
+      formData.append('event_type', selectedEvent);
+      
+      // Format date properly to avoid timezone offset issues
+      const year = bookingDate.getFullYear();
+      const month = String(bookingDate.getMonth() + 1).padStart(2, '0');
+      const day = String(bookingDate.getDate()).padStart(2, '0');
+      const localDateString = `${year}-${month}-${day}`;
+      
+      formData.append('booking_date', localDateString);
+      formData.append('event_details', eventDetails || '');
+      formData.append('total_price', totalPrice.toString());
+      formData.append('proof_of_payment', proofOfPayment);
+
+      const response = await fetch(`${API_URL}/api/event-bookings`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || 'Failed to create event booking');
+      }
+
+      toast({
+        title: "Booking Submitted Successfully! 🎉",
+        description: `Your event booking for ₱${totalPrice.toLocaleString('en-PH')} has been submitted. Please wait for admin confirmation.`,
+        variant: "default",
+      })
+      
+      handleClose();
+      
+      // Refresh page to show updated bookings
+      setTimeout(() => window.location.reload(), 1000);
+    } catch (error: any) {
+      console.error('Event booking error:', error);
+      toast({
+        title: "Booking Failed",
+        description: error.message || 'Failed to book event. Please try again.',
+        variant: "destructive",
+      })
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   const resetForm = () => {
@@ -160,6 +271,9 @@ export default function EventBookingModal({ isOpen, onClose }: EventBookingModal
     return (
       <Dialog open={isOpen} onOpenChange={handleClose}>
         <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Loading</DialogTitle>
+          </DialogHeader>
           <div className="flex flex-col items-center justify-center py-12">
             <Loader2 className="w-12 h-12 animate-spin text-primary mb-4" />
             <p className="text-lg font-medium">Loading event pricing...</p>
@@ -268,6 +382,27 @@ export default function EventBookingModal({ isOpen, onClose }: EventBookingModal
                 />
               </PopoverContent>
             </Popover>
+            
+            {/* Availability Message */}
+            {checkingAvailability && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground mt-2">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Checking availability...</span>
+              </div>
+            )}
+            
+            {!checkingAvailability && availabilityMessage && (
+              <Alert variant={availabilityType === 'error' ? 'destructive' : 'default'} className="mt-2">
+                {availabilityType === 'error' ? (
+                  <AlertCircle className="h-4 w-4" />
+                ) : (
+                  <Info className="h-4 w-4" />
+                )}
+                <AlertDescription className="text-sm">
+                  {availabilityMessage}
+                </AlertDescription>
+              </Alert>
+            )}
           </div>
 
           {/* Event Details */}
@@ -399,9 +534,30 @@ export default function EventBookingModal({ isOpen, onClose }: EventBookingModal
           <Button 
             onClick={handleBookEvent} 
             className="w-full h-12 text-lg"
-            disabled={!selectedEvent || !bookingDate || !proofOfPayment}
+            disabled={
+              !selectedEvent || 
+              !bookingDate || 
+              !proofOfPayment || 
+              isSubmitting || 
+              checkingAvailability ||
+              !isAvailable
+            }
           >
-            {selectedEvent ? `Book Event - ₱${totalPrice.toLocaleString('en-PH')}` : 'Select Event Package'}
+            {isSubmitting ? (
+              <>
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                Submitting...
+              </>
+            ) : checkingAvailability ? (
+              <>
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                Checking Availability...
+              </>
+            ) : selectedEvent ? (
+              `Book Event - ₱${totalPrice.toLocaleString('en-PH')}`
+            ) : (
+              'Select Event Package'
+            )}
           </Button>
           
           {!selectedEvent && (
@@ -417,6 +573,11 @@ export default function EventBookingModal({ isOpen, onClose }: EventBookingModal
           {selectedEvent && bookingDate && !proofOfPayment && (
             <p className="text-sm text-center text-muted-foreground mt-2">
               Please upload proof of payment to proceed
+            </p>
+          )}
+          {selectedEvent && bookingDate && !isAvailable && (
+            <p className="text-sm text-center text-destructive mt-2">
+              This date and time slot is not available. Please select another date or time slot.
             </p>
           )}
         </div>

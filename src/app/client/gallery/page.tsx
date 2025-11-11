@@ -12,12 +12,10 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { Card } from '@/components/ui/card';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+import { API_URL } from '@/lib/utils';
 
 interface GalleryItem {
   id: number;
-  title: string | null;
   image_url: string;
   description: string | null;
   uploaded_at: string;
@@ -144,7 +142,7 @@ export default function GalleryPage() {
                 <div className="relative w-full h-full">
                   <Image 
                     src={imageUrl} 
-                    alt={item.title || item.description || 'Gallery item'}
+                    alt={item.description || 'Gallery item'}
                     fill
                     className="object-cover group-hover:scale-110 transition-transform duration-500"
                     sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
@@ -154,9 +152,6 @@ export default function GalleryPage() {
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                     <div className="absolute bottom-0 left-0 right-0 p-6">
-                      {item.title && (
-                        <h3 className="text-white font-bold text-xl mb-2">{item.title}</h3>
-                      )}
                       {item.description && (
                         <p className="text-white/90 text-sm line-clamp-2">{item.description}</p>
                       )}
@@ -183,12 +178,18 @@ export default function GalleryPage() {
         return (
           <Dialog open={!!selectedItem} onOpenChange={() => setSelectedItem(null)}>
             <DialogContent className="max-w-6xl max-h-[95vh] overflow-hidden p-0">
+              <DialogHeader className="sr-only">
+                <DialogTitle>Gallery Image Viewer</DialogTitle>
+                {selectedItem.description && (
+                  <DialogDescription>{selectedItem.description}</DialogDescription>
+                )}
+              </DialogHeader>
               <div className="relative">
                 {/* Main Image */}
                 <div className="relative w-full aspect-video bg-black">
                   <Image
                     src={currentImage}
-                    alt={`${selectedItem.title || 'Gallery'} - ${selectedImageIndex + 1}`}
+                    alt={`Gallery - ${selectedImageIndex + 1}`}
                     fill
                     className="object-contain"
                     sizes="95vw"
@@ -230,11 +231,8 @@ export default function GalleryPage() {
 
                 {/* Info Section */}
                 <div className="p-6 bg-background">
-                  {selectedItem.title && (
-                    <h2 className="text-2xl font-bold mb-2">{selectedItem.title}</h2>
-                  )}
                   {selectedItem.description && (
-                    <p className="text-muted-foreground">{selectedItem.description}</p>
+                    <p className="text-muted-foreground text-lg">{selectedItem.description}</p>
                   )}
                   
                   {/* Thumbnail Grid for multiple images */}

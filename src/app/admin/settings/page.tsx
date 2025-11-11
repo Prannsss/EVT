@@ -17,8 +17,7 @@ import {
   Moon
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+import { API_URL } from '@/lib/utils';
 
 interface PricingSetting {
   id: number;

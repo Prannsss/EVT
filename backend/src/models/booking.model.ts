@@ -2,40 +2,73 @@ import { pool } from '../config/db.js';
 import { Booking, BookingCreate, BookingUpdate } from '../types/booking.js';
 import { RowDataPacket, ResultSetHeader } from 'mysql2';
 
-export const getAllBookings = async (): Promise<Booking[]> => {
+export const getAllBookings = async (): Promise<any[]> => {
   const [rows] = await pool.query<RowDataPacket[]>(
-    'SELECT * FROM bookings ORDER BY created_at DESC'
+    `SELECT 
+      b.*,
+      u.name as user_name,
+      u.email as user_email,
+      u.contact_number as user_contact,
+      a.name as accommodation_name,
+      a.type as accommodation_type
+    FROM bookings b
+    LEFT JOIN users u ON b.user_id = u.id
+    LEFT JOIN accommodations a ON b.accommodation_id = a.id
+    ORDER BY b.created_at DESC`
   );
-  return rows as Booking[];
+  return rows as any[];
 };
 
-export const getBookingById = async (id: number): Promise<Booking | null> => {
+export const getBookingById = async (id: number): Promise<any | null> => {
   const [rows] = await pool.query<RowDataPacket[]>(
-    'SELECT * FROM bookings WHERE id = ?',
+    `SELECT 
+      b.*,
+      u.name as user_name,
+      u.email as user_email,
+      u.contact_number as user_contact,
+      a.name as accommodation_name,
+      a.type as accommodation_type,
+      a.capacity as accommodation_capacity
+    FROM bookings b
+    LEFT JOIN users u ON b.user_id = u.id
+    LEFT JOIN accommodations a ON b.accommodation_id = a.id
+    WHERE b.id = ?`,
     [id]
   );
-  return rows.length > 0 ? (rows[0] as Booking) : null;
+  return rows.length > 0 ? rows[0] : null;
 };
 
-export const getBookingsByUserId = async (userId: number): Promise<Booking[]> => {
+export const getBookingsByUserId = async (userId: number): Promise<any[]> => {
   const [rows] = await pool.query<RowDataPacket[]>(
-    'SELECT * FROM bookings WHERE user_id = ? ORDER BY created_at DESC',
+    `SELECT 
+      b.*,
+      u.name as user_name,
+      u.email as user_email,
+      u.contact_number as user_contact,
+      a.name as accommodation_name,
+      a.type as accommodation_type
+    FROM bookings b
+    LEFT JOIN users u ON b.user_id = u.id
+    LEFT JOIN accommodations a ON b.accommodation_id = a.id
+    WHERE b.user_id = ? 
+    ORDER BY b.created_at DESC`,
     [userId]
   );
-  return rows as Booking[];
+  return rows as any[];
 };
 
 export const createBooking = async (data: BookingCreate): Promise<number> => {
   const [result] = await pool.query<ResultSetHeader>(
     `INSERT INTO bookings (
-      user_id, accommodation_id, check_in_date, check_out_date, 
+      user_id, accommodation_id, check_in_date, booking_time, check_out_date, 
       adults, kids, pwd, overnight_stay, overnight_swimming, 
       total_price, proof_of_payment_url
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       data.user_id,
       data.accommodation_id,
       data.check_in_date,
+      data.booking_time,
       data.check_out_date || null,
       data.adults,
       data.kids,
@@ -76,4 +109,49 @@ export const deleteBooking = async (id: number): Promise<boolean> => {
     [id]
   );
   return result.affectedRows > 0;
+};
+
+// Check if accommodation is available for the given date range
+export const checkAccommodationAvailability = async (
+  accommodationId: number,
+  checkInDate: string,
+  checkOutDate: string | null,
+  excludeBookingId?: number
+): Promise<boolean> => {
+  let query = `
+    SELECT COUNT(*) as count 
+    FROM bookings 
+    WHERE accommodation_id = ? 
+    AND status = 'approved'
+    AND (
+      (check_in_date <= ? AND (check_out_date >= ? OR check_out_date IS NULL))
+      OR (? <= check_in_date AND (check_out_date IS NULL OR check_in_date <= ?))
+    )
+  `;
+  
+  const params: any[] = [accommodationId, checkInDate, checkInDate, checkInDate, checkOutDate || checkInDate];
+  
+  if (excludeBookingId) {
+    query += ' AND id != ?';
+    params.push(excludeBookingId);
+  }
+  
+  const [rows] = await pool.query<RowDataPacket[]>(query, params);
+  const count = rows[0]?.count || 0;
+  
+  return count === 0; // Returns true if available (no conflicting bookings)
+};
+
+// Get all approved bookings for a specific accommodation
+export const getApprovedBookingsByAccommodation = async (
+  accommodationId: number
+): Promise<any[]> => {
+  const [rows] = await pool.query<RowDataPacket[]>(
+    `SELECT check_in_date, check_out_date 
+     FROM bookings 
+     WHERE accommodation_id = ? AND status = 'approved'
+     ORDER BY check_in_date`,
+    [accommodationId]
+  );
+  return rows as any[];
 };

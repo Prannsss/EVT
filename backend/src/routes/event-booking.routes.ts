@@ -2,16 +2,16 @@ import { Router } from 'express';
 import multer from 'multer';
 import path from 'path';
 import {
-  getBookings,
-  getBooking,
-  addBooking,
-  modifyBooking,
-  cancelBooking,
-  approveBooking,
-  rejectBooking,
-  checkOutBooking,
-  deleteBookingById,
-} from '../controllers/booking.controller.js';
+  getEventBookings,
+  getEventBooking,
+  addEventBooking,
+  modifyEventBooking,
+  cancelEventBooking,
+  approveEventBooking,
+  rejectEventBooking,
+  checkOutEventBooking,
+  deleteEventBookingById,
+} from '../controllers/event-booking.controller.js';
 import { authenticate } from '../middlewares/auth.middleware.js';
 
 const router = Router();
@@ -23,7 +23,7 @@ const storage = multer.diskStorage({
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    cb(null, 'payment-' + uniqueSuffix + path.extname(file.originalname));
+    cb(null, 'event-payment-' + uniqueSuffix + path.extname(file.originalname));
   },
 });
 
@@ -43,14 +43,14 @@ const upload = multer({
   },
 });
 
-router.get('/', authenticate, getBookings);
-router.get('/:id', authenticate, getBooking);
-router.post('/', authenticate, upload.single('proof_of_payment'), addBooking);
-router.put('/:id', authenticate, upload.single('proof_of_payment'), modifyBooking);
-router.patch('/:id/cancel', authenticate, cancelBooking);
-router.patch('/:id/approve', authenticate, approveBooking);
-router.patch('/:id/reject', authenticate, rejectBooking);
-router.patch('/:id/checkout', authenticate, checkOutBooking);
-router.delete('/:id', authenticate, deleteBookingById);
+router.get('/', authenticate, getEventBookings);
+router.get('/:id', authenticate, getEventBooking);
+router.post('/', authenticate, upload.single('proof_of_payment'), addEventBooking);
+router.put('/:id', authenticate, upload.single('proof_of_payment'), modifyEventBooking);
+router.patch('/:id/cancel', authenticate, cancelEventBooking);
+router.patch('/:id/approve', authenticate, approveEventBooking);
+router.patch('/:id/reject', authenticate, rejectEventBooking);
+router.patch('/:id/checkout', authenticate, checkOutEventBooking);
+router.delete('/:id', authenticate, deleteEventBookingById);
 
 export default router;

@@ -54,8 +54,7 @@ import {
   Loader2,
   AlertCircle,
 } from "lucide-react";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+import { API_URL } from '@/lib/utils';
 
 interface Accommodation {
   id: number;
@@ -113,7 +112,7 @@ export default function AdminRoomsPage() {
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch('http://localhost:5000/api/accommodations');
+      const response = await fetch(`${API_URL}/api/accommodations`);
       
       if (!response.ok) {
         throw new Error('Failed to fetch accommodations');
@@ -159,7 +158,7 @@ export default function AdminRoomsPage() {
           return;
         }
 
-        const response = await fetch(`http://localhost:5000/api/accommodations/${selected.id}`, {
+        const response = await fetch(`${API_URL}/api/accommodations/${selected.id}`, {
           method: 'PUT',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -260,7 +259,7 @@ export default function AdminRoomsPage() {
         return;
       }
 
-      const response = await fetch(`http://localhost:5000/api/accommodations/${selected.id}`, {
+      const response = await fetch(`${API_URL}/api/accommodations/${selected.id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -331,7 +330,7 @@ export default function AdminRoomsPage() {
       }
 
       // Send request
-      const response = await fetch('http://localhost:5000/api/accommodations', {
+      const response = await fetch(`${API_URL}/api/accommodations`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

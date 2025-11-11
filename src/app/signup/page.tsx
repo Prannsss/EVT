@@ -8,9 +8,12 @@ import { Label } from '../../components/ui/label';
 import { Checkbox } from '../../components/ui/checkbox';
 import EmailVerification from '../../components/EmailVerification';
 import { Loader2 } from 'lucide-react';
+import { API_URL } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 export default function SignupPage() {
   const router = useRouter();
+  const { toast } = useToast();
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -53,16 +56,31 @@ export default function SignupPage() {
 
     if (!formData.acceptTerms) {
       setError('Please accept the terms and conditions');
+      toast({
+        title: "Terms Required",
+        description: "Please accept the terms and conditions to continue",
+        variant: "destructive",
+      });
       return;
     }
 
     if (formData.password.length < 6) {
       setError('Password must be at least 6 characters');
+      toast({
+        title: "Invalid Password",
+        description: "Password must be at least 6 characters long",
+        variant: "destructive",
+      });
       return;
     }
 
     if (!validatePhoneNumber(formData.contactNumber)) {
       setError('Please enter a valid Philippine phone number (e.g., 09078845654 or +639078845654)');
+      toast({
+        title: "Invalid Phone Number",
+        description: "Please enter a valid Philippine phone number",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -72,7 +90,7 @@ export default function SignupPage() {
       const fullName = `${formData.firstName} ${formData.lastName}`.trim();
 
       // Register the user - this will create the user and send verification email
-      const response = await fetch('http://localhost:5000/api/auth/register', {
+      const response = await fetch(`${API_URL}/api/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -89,10 +107,21 @@ export default function SignupPage() {
         throw new Error(data.message || 'Failed to register');
       }
 
+      toast({
+        title: "Registration Successful! ✓",
+        description: "Please check your email to verify your account",
+        variant: "default",
+      });
+
       // Show verification modal
       setShowVerification(true);
     } catch (err: any) {
       setError(err.message || 'Failed to register. Please try again.');
+      toast({
+        title: "Registration Failed",
+        description: err.message || 'Failed to register. Please try again.',
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -100,7 +129,12 @@ export default function SignupPage() {
 
   const handleVerified = async () => {
     // User is already created and verified, just redirect to login
-    router.push('/login?verified=true');
+    toast({
+      title: "Email Verified! ✓",
+      description: "Your account has been verified. Redirecting to login...",
+      variant: "default",
+    });
+    setTimeout(() => router.push('/login?verified=true'), 1000);
   };
 
   return (

@@ -3,16 +3,18 @@
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { API_URL } from '@/lib/utils';
 import {
   Users,
   Calendar,
-  DollarSign,
+  Banknote,
   TrendingUp,
   ArrowUpRight,
   ArrowDownRight,
   MoreHorizontal,
   Loader2,
   AlertCircle,
+  RefreshCw,
 } from 'lucide-react';
 import { Bar } from 'react-chartjs-2';
 import {
@@ -72,30 +74,60 @@ const chartOptions = {
 interface Booking {
   id: number;
   user_id: number;
-  accommodation_id: number;
+  accommodation_id?: number;
   check_in: string;
-  check_out: string;
-  guests: number;
+  check_out?: string;
+  guests?: number;
   total_price: number;
   status: string;
   created_at: string;
   accommodation_name?: string;
   user_name?: string;
   user_email?: string;
+  // Event booking fields
+  booking_type?: 'regular' | 'event';
+  event_type?: 'whole_day' | 'evening' | 'morning';
+  booking_date?: string;
+  check_in_date?: string;
 }
 
 export default function DashboardPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
     fetchBookings();
+    
+    // Auto-refresh every 30 seconds
+    const intervalId = setInterval(() => {
+      fetchBookings();
+    }, 30000);
+
+    // Refresh when user returns to the page
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchBookings();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Cleanup
+    return () => {
+      clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
-  const fetchBookings = async () => {
+  const fetchBookings = async (isManualRefresh = false) => {
     try {
-      setLoading(true);
+      if (isManualRefresh) {
+        setIsRefreshing(true);
+      } else {
+        setLoading(true);
+      }
       setError(null);
       const token = localStorage.getItem('token');
       
@@ -104,31 +136,65 @@ export default function DashboardPage() {
         return;
       }
 
-      const response = await fetch('http://localhost:5000/api/bookings', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
+      // Fetch both regular bookings and event bookings in parallel
+      const [regularResponse, eventResponse] = await Promise.all([
+        fetch(`${API_URL}/api/bookings`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        }),
+        fetch(`${API_URL}/api/event-bookings`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        })
+      ]);
 
-      if (!response.ok) {
+      if (!regularResponse.ok || !eventResponse.ok) {
         throw new Error('Failed to fetch bookings');
       }
 
-      const data = await response.json();
-      setBookings(data.data || []);
+      const regularData = await regularResponse.json();
+      const eventData = await eventResponse.json();
+
+      // Mark booking types and combine
+      const regularBookings = (regularData.data || []).map((booking: any) => ({
+        ...booking,
+        booking_type: 'regular' as const,
+        check_in: booking.check_in_date,
+      }));
+
+      const eventBookings = (eventData.data || []).map((booking: any) => ({
+        ...booking,
+        booking_type: 'event' as const,
+        check_in: booking.booking_date, // Map booking_date to check_in for consistency
+        accommodation_name: `Event: ${booking.event_type?.replace('_', ' ').toUpperCase()}`,
+        guests: 0, // Events don't have individual guest counts
+      }));
+
+      // Combine and sort by creation date
+      const allBookings = [...regularBookings, ...eventBookings].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+
+      setBookings(allBookings);
+      setLastUpdated(new Date());
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load data');
     } finally {
       setLoading(false);
+      setIsRefreshing(false);
     }
   };
 
-  // Calculate stats from bookings
+  // Calculate stats from bookings (both regular and event bookings)
   const stats = {
     totalReservations: bookings.length,
-    confirmedBookings: bookings.filter(b => b.status === 'confirmed').length,
+    confirmedBookings: bookings.filter(b => 
+      b.status === 'confirmed' || b.status === 'approved' || b.status === 'completed'
+    ).length,
     totalRevenue: bookings
-      .filter(b => b.status === 'confirmed' || b.status === 'completed')
+      .filter(b => b.status === 'confirmed' || b.status === 'approved' || b.status === 'completed')
       .reduce((sum, b) => sum + Number(b.total_price), 0),
     pendingBookings: bookings.filter(b => b.status === 'pending').length,
   };
@@ -175,7 +241,7 @@ export default function DashboardPage() {
       value: `₱${stats.totalRevenue.toLocaleString()}`,
       change: '+0%',
       trend: 'up',
-      icon: DollarSign,
+      icon: Banknote,
       color: 'from-blue-600 to-sky-400',
     },
     {
@@ -205,16 +271,33 @@ export default function DashboardPage() {
       <div className="flex flex-col items-center justify-center h-96 gap-4">
         <AlertCircle className="w-12 h-12 text-destructive" />
         <p className="text-lg text-muted-foreground">{error}</p>
-        <Button onClick={fetchBookings}>Try Again</Button>
+        <Button onClick={() => fetchBookings()}>Try Again</Button>
       </div>
     );
   }
 
   return (
     <>
-      {/* Admin Title - Hidden when sidebar is toggled */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold group-data-[collapsible=icon]:hidden">Admin</h1>
+      {/* Admin Title with Refresh Button */}
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold group-data-[collapsible=icon]:hidden">Admin</h1>
+          {lastUpdated && (
+            <p className="text-sm text-muted-foreground mt-1">
+              Last updated: {lastUpdated.toLocaleTimeString()}
+            </p>
+          )}
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => fetchBookings(true)}
+          disabled={isRefreshing}
+          className="gap-2"
+        >
+          <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+          Refresh
+        </Button>
       </div>
       
       {/* Stats Grid */}
@@ -320,21 +403,25 @@ export default function DashboardPage() {
                 </TableHeader>
                 <TableBody>
                   {recentBookings.map((booking) => (
-                    <TableRow key={booking.id} className="hover:bg-muted/50">
+                    <TableRow key={`${booking.booking_type}-${booking.id}`} className="hover:bg-muted/50">
                       <TableCell>{booking.user_name || booking.user_email || 'Unknown'}</TableCell>
                       <TableCell>{booking.accommodation_name || `Accommodation #${booking.accommodation_id}`}</TableCell>
                       <TableCell>
                         <Badge
                           variant={
-                            booking.status === 'confirmed'
+                            booking.status === 'confirmed' || booking.status === 'approved'
+                              ? 'default'
+                              : booking.status === 'completed'
                               ? 'default'
                               : booking.status === 'pending'
                               ? 'secondary'
                               : 'destructive'
                           }
                           className={
-                            booking.status === 'confirmed'
+                            booking.status === 'approved' || booking.status === 'confirmed'
                               ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100'
+                              : booking.status === 'completed'
+                              ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100'
                               : booking.status === 'pending'
                               ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100'
                               : ''

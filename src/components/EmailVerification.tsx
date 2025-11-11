@@ -12,6 +12,8 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { CheckCircle, Mail, RefreshCw, Loader2 } from "lucide-react";
+import { API_URL } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 
 interface EmailVerificationProps {
   email: string;
@@ -28,6 +30,7 @@ export default function EmailVerification({
   onClose,
   onVerified,
 }: EmailVerificationProps) {
+  const { toast } = useToast();
   const [code, setCode] = useState(["", "", "", "", "", ""]);
   const [isVerifying, setIsVerifying] = useState(false);
   const [isResending, setIsResending] = useState(false);
@@ -116,7 +119,7 @@ export default function EmailVerification({
     setError("");
 
     try {
-      const response = await fetch("http://localhost:5000/api/verification/verify", {
+      const response = await fetch(`${API_URL}/api/verification/verify`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, code: codeToVerify }),
@@ -126,6 +129,11 @@ export default function EmailVerification({
 
       if (response.ok && data.success) {
         setSuccess(true);
+        toast({
+          title: "Email Verified! ✓",
+          description: "Your email has been successfully verified",
+          variant: "default",
+        });
         // Close modal and redirect after a brief success message
         setTimeout(() => {
           setSuccess(false);
@@ -133,11 +141,21 @@ export default function EmailVerification({
         }, 1500);
       } else {
         setError(data.message || "Invalid or expired verification code");
+        toast({
+          title: "Verification Failed",
+          description: data.message || "Invalid or expired verification code",
+          variant: "destructive",
+        });
         setCode(["", "", "", "", "", ""]);
         inputRefs.current[0]?.focus();
       }
     } catch (err) {
       setError("Failed to verify code. Please try again.");
+      toast({
+        title: "Verification Error",
+        description: "Failed to verify code. Please try again.",
+        variant: "destructive",
+      });
       setCode(["", "", "", "", "", ""]);
       inputRefs.current[0]?.focus();
     } finally {
@@ -150,7 +168,7 @@ export default function EmailVerification({
     setError("");
 
     try {
-      const response = await fetch("http://localhost:5000/api/verification/send", {
+      const response = await fetch(`${API_URL}/api/verification/send`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, name }),
@@ -162,11 +180,26 @@ export default function EmailVerification({
         setTimeLeft(900); // Reset timer to 15 minutes
         setCode(["", "", "", "", "", ""]);
         inputRefs.current[0]?.focus();
+        toast({
+          title: "Code Resent ✓",
+          description: "A new verification code has been sent to your email",
+          variant: "default",
+        });
       } else {
         setError(data.message || "Failed to resend code");
+        toast({
+          title: "Resend Failed",
+          description: data.message || "Failed to resend code",
+          variant: "destructive",
+        });
       }
     } catch (err) {
       setError("Failed to resend code. Please try again.");
+      toast({
+        title: "Resend Error",
+        description: "Failed to resend code. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setIsResending(false);
     }

@@ -5,6 +5,8 @@ import { fileURLToPath } from 'url';
 import authRoutes from './routes/auth.routes.js';
 import accommodationRoutes from './routes/accommodation.routes.js';
 import bookingRoutes from './routes/booking.routes.js';
+import eventBookingRoutes from './routes/event-booking.routes.js';
+import availabilityRoutes from './routes/availability.routes.js';
 import galleryRoutes from './routes/gallery.routes.js';
 import verificationRoutes from './routes/verification.routes.js';
 import emailLogRoutes from './routes/email-log.routes.js';
@@ -31,6 +33,8 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 app.use('/api/auth', authRoutes);
 app.use('/api/accommodations', accommodationRoutes);
 app.use('/api/bookings', bookingRoutes);
+app.use('/api/event-bookings', eventBookingRoutes);
+app.use('/api/availability', availabilityRoutes);
 app.use('/api/gallery', galleryRoutes);
 app.use('/api/verification', verificationRoutes);
 app.use('/api/email-logs', emailLogRoutes);
@@ -46,6 +50,8 @@ app.get('/api', (req, res) => {
       auth: '/api/auth',
       accommodations: '/api/accommodations',
       bookings: '/api/bookings',
+      eventBookings: '/api/event-bookings',
+      availability: '/api/availability',
       gallery: '/api/gallery',
       verification: '/api/verification',
       emailLogs: '/api/email-logs',

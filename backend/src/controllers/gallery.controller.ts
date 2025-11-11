@@ -35,7 +35,7 @@ export const getGalleryImage = async (req: Request, res: Response) => {
 
 export const uploadGalleryImage = async (req: Request, res: Response) => {
   try {
-    const { title, description } = req.body;
+    const { description } = req.body;
     const files = req.files as Express.Multer.File[];
 
     if (!files || files.length === 0) {
@@ -46,7 +46,7 @@ export const uploadGalleryImage = async (req: Request, res: Response) => {
     const imagePaths = files.map(file => `/uploads/${file.filename}`);
     const imageUrl = JSON.stringify(imagePaths);
 
-    const id = await createGalleryImage({ title, image_url: imageUrl, description });
+    const id = await createGalleryImage({ image_url: imageUrl, description });
 
     res.status(201).json(successResponse({ id, image_url: imageUrl }, 'Images uploaded successfully'));
   } catch (error: any) {

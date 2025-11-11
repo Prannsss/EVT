@@ -3,6 +3,7 @@ export interface Booking {
   user_id: number;
   accommodation_id: number;
   check_in_date: Date;
+  booking_time: string;
   check_out_date: Date | null;
   adults: number;
   kids: number;
@@ -10,7 +11,7 @@ export interface Booking {
   overnight_stay: boolean;
   overnight_swimming: boolean;
   total_price: number;
-  status: 'pending' | 'approved' | 'cancelled';
+  status: 'pending' | 'approved' | 'cancelled' | 'completed';
   proof_of_payment_url: string | null;
   created_at: Date;
   updated_at: Date;
@@ -20,6 +21,7 @@ export interface BookingCreate {
   user_id: number;
   accommodation_id: number;
   check_in_date: string;
+  booking_time: string;
   check_out_date?: string;
   adults: number;
   kids: number;
@@ -31,6 +33,6 @@ export interface BookingCreate {
 }
 
 export interface BookingUpdate {
-  status?: 'pending' | 'approved' | 'cancelled';
+  status?: 'pending' | 'approved' | 'cancelled' | 'completed';
   proof_of_payment_url?: string;
 }

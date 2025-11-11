@@ -6,22 +6,28 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, User, Home, Users, Mail, Phone, TrendingUp, CheckCircle2, XCircle, Clock, Loader2, AlertCircle } from 'lucide-react';
 import { format, addMonths, subMonths, isSameMonth, isSameDay } from 'date-fns';
+import { API_URL } from '@/lib/utils';
 
 interface Booking {
   id: number;
   user_id: number;
-  accommodation_id: number;
+  accommodation_id?: number;
   check_in_date: string;
-  check_out_date: string;
-  adults: number;
-  kids: number;
-  pwd: number;
+  booking_time?: string;
+  check_out_date?: string;
+  adults?: number;
+  kids?: number;
+  pwd?: number;
   total_price: number;
   status: string;
   created_at: string;
   user_name?: string;
   user_email?: string;
   accommodation_name?: string;
+  // Event booking fields
+  booking_type?: 'regular' | 'event';
+  event_type?: 'whole_day' | 'evening' | 'morning';
+  booking_date?: string;
 }
 
 export default function AdminCalendarPage() {
@@ -57,18 +63,49 @@ export default function AdminCalendarPage() {
         return;
       }
 
-      const response = await fetch('http://localhost:5000/api/bookings', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
+      // Fetch both regular bookings and event bookings in parallel
+      const [regularResponse, eventResponse] = await Promise.all([
+        fetch(`${API_URL}/api/bookings`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        }),
+        fetch(`${API_URL}/api/event-bookings`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        })
+      ]);
 
-      if (!response.ok) {
+      if (!regularResponse.ok || !eventResponse.ok) {
         throw new Error('Failed to fetch bookings');
       }
 
-      const data = await response.json();
-      setBookings(data.data || []);
+      const regularData = await regularResponse.json();
+      const eventData = await eventResponse.json();
+
+      // Mark booking types and combine
+      const regularBookings = (regularData.data || []).map((booking: any) => ({
+        ...booking,
+        booking_type: 'regular' as const,
+      }));
+
+      const eventBookings = (eventData.data || []).map((booking: any) => ({
+        ...booking,
+        booking_type: 'event' as const,
+        check_in_date: booking.booking_date, // Map booking_date to check_in_date for consistency
+        accommodation_name: `Event: ${booking.event_type?.replace('_', ' ').toUpperCase()}`,
+        adults: 0,
+        kids: 0,
+        pwd: 0,
+      }));
+
+      // Combine and sort by creation date
+      const allBookings = [...regularBookings, ...eventBookings].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+
+      setBookings(allBookings);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load bookings');
     } finally {
@@ -154,14 +191,20 @@ export default function AdminCalendarPage() {
 
   const quickStats = useMemo(() => {
     const stats = { active: 0, cancelled: 0, completed: 0, totalRevenue: 0 };
-    bookings.forEach(b => {
-      if (b.status === 'confirmed') stats.active++;
+    
+    // Filter bookings for the selected date
+    const dateBookings = selectedDate 
+      ? bookings.filter(b => isSameDay(new Date(b.check_in_date), selectedDate))
+      : [];
+    
+    dateBookings.forEach(b => {
+      if (b.status === 'confirmed' || b.status === 'approved') stats.active++;
       if (b.status === 'cancelled') stats.cancelled++;
       if (b.status === 'completed') stats.completed++;
-      if (b.status !== 'cancelled') stats.totalRevenue += b.total_price;
+      if (b.status !== 'cancelled') stats.totalRevenue += Number(b.total_price);
     });
     return stats;
-  }, [bookings]);
+  }, [bookings, selectedDate]);
 
   if (loading) {
     return (
@@ -214,12 +257,12 @@ export default function AdminCalendarPage() {
                   return (
                     <div 
                       key={index}
-                      className={`h-20 p-2 relative border rounded-lg cursor-pointer transition-all duration-200 ${day.isCurrentMonth ? 'bg-background hover:bg-accent/50' : 'bg-muted/30 text-muted-foreground'} ${isSelected ? 'ring-2 ring-primary shadow-md scale-105 bg-primary/5' : ''} ${day.hasBooking && day.isCurrentMonth ? 'border-primary/50' : 'border-border'} ${isTodayDate && day.isCurrentMonth ? 'bg-primary/10 font-bold border-primary border-2' : ''} hover:shadow-sm`}
+                      className={`h-20 p-2 relative border rounded-lg cursor-pointer transition-all duration-200 ${day.isCurrentMonth ? 'bg-background hover:bg-accent/50' : 'bg-muted/30 text-muted-foreground'} ${isSelected ? 'bg-primary/10 font-bold shadow-[inset_0_0_0_2px_hsl(var(--primary))] border-transparent' : ''} ${day.hasBooking && day.isCurrentMonth && !isSelected && !isTodayDate ? 'border-primary/50' : !isSelected && !isTodayDate ? 'border-border' : ''} ${isTodayDate && day.isCurrentMonth && !isSelected ? 'bg-primary/10 font-bold shadow-[inset_0_0_0_2px_hsl(var(--primary))] border-transparent' : ''} hover:shadow-sm`}
                       onClick={() => handleDateSelect(day.date)}
                     >
-                      <div className={`text-sm font-medium ${isTodayDate ? 'text-primary' : ''} flex items-center justify-between`}>
+                      <div className={`text-sm font-medium ${(isTodayDate || isSelected) ? 'text-primary' : ''} flex items-center justify-between`}>
                         <span>{day.date.getDate()}</span>
-                        {isTodayDate && day.isCurrentMonth && (<div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>)}
+                        {isTodayDate && day.isCurrentMonth && !isSelected && (<div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>)}
                       </div>
                       {bookingCount > 0 && day.isCurrentMonth && (
                         <div className="absolute bottom-2 left-2 right-2">
@@ -263,7 +306,19 @@ export default function AdminCalendarPage() {
                     </p>
                     <p className="text-sm text-muted-foreground flex items-center gap-2">
                       <Clock className="w-4 h-4" />
-                      Booking Time: {new Date(selectedReservation.check_in_date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                      Booking Time: {selectedReservation.booking_time 
+                        ? new Date(`2000-01-01T${selectedReservation.booking_time}`).toLocaleTimeString('en-US', { 
+                            hour: '2-digit', 
+                            minute: '2-digit',
+                            hour12: true 
+                          })
+                        : selectedReservation.booking_type === 'event'
+                          ? (selectedReservation.event_type === 'whole_day' 
+                              ? '9:00 AM - 5:00 PM' 
+                              : selectedReservation.event_type === 'morning' 
+                                ? '9:00 AM - 12:00 PM' 
+                                : '1:00 PM - 5:00 PM')
+                          : '12:00 AM'}
                     </p>
                   </div>
                   <div className="grid grid-cols-1 gap-4">
@@ -278,7 +333,12 @@ export default function AdminCalendarPage() {
                       <Users className="w-5 h-5 text-primary mt-0.5" />
                       <div className="flex-1">
                         <p className="text-sm font-medium text-muted-foreground">Guests</p>
-                        <p className="font-semibold">{selectedReservation.adults + selectedReservation.kids + selectedReservation.pwd} people</p>
+                        <p className="font-semibold">
+                          {selectedReservation.booking_type === 'event' 
+                            ? 'Event Booking' 
+                            : `${(selectedReservation.adults || 0) + (selectedReservation.kids || 0) + (selectedReservation.pwd || 0)} people`
+                          }
+                        </p>
                       </div>
                     </div>
                     <div className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg">
@@ -344,7 +404,7 @@ export default function AdminCalendarPage() {
                     <div className="w-10 h-10 bg-primary/20 rounded-full flex items-center justify-center"><TrendingUp className="w-5 h-5 text-primary" /></div>
                     <span className="font-bold">Total Revenue</span>
                   </div>
-                  <span className="font-bold text-2xl text-primary">₱{quickStats.totalRevenue.toLocaleString()}</span>
+                  <span className="font-bold text-2xl text-primary">₱{quickStats.totalRevenue.toFixed(2)}</span>
                 </div>
               </div>
             </CardContent>

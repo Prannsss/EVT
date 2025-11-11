@@ -16,12 +16,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Upload, Trash2, Loader2, AlertCircle, Image as ImageIcon, Plus, X } from "lucide-react";
 import Image from "next/image";
 import { useState, useEffect, useRef } from "react";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+import { API_URL } from '@/lib/utils';
 
 interface GalleryItem {
   id: number;
-  title: string | null;
   image_url: string;
   description: string | null;
   uploaded_at: string;
@@ -33,16 +31,29 @@ export default function AdminGalleryPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentUserRole, setCurrentUserRole] = useState<string>('');
   
   // Add form state
   const [newItem, setNewItem] = useState({
-    title: '',
     description: ''
   });
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    // Check user role on mount
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        setCurrentUserRole(user.role || 'unknown');
+      } catch {
+        setCurrentUserRole('invalid');
+      }
+    } else {
+      setCurrentUserRole('none');
+    }
+    
     fetchGalleryItems();
   }, []);
 
@@ -81,7 +92,6 @@ export default function AdminGalleryPage() {
       }
 
       const formData = new FormData();
-      if (newItem.title) formData.append('title', newItem.title);
       if (newItem.description) formData.append('description', newItem.description);
       
       selectedFiles.forEach((file) => {
@@ -89,9 +99,22 @@ export default function AdminGalleryPage() {
       });
 
       const token = localStorage.getItem('token');
+      const userStr = localStorage.getItem('user');
+      
       if (!token) {
-        alert('Authentication required. Please login.');
+        alert('Authentication required. Please login again.');
+        window.location.href = '/login';
         return;
+      }
+
+      // Debug: Check user role
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        console.log('Current user:', user);
+        if (user.role !== 'admin') {
+          alert('Admin access required. Your current role is: ' + user.role);
+          return;
+        }
       }
 
       const response = await fetch(`${API_URL}/api/gallery`, {
@@ -105,17 +128,21 @@ export default function AdminGalleryPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || 'Failed to upload images');
+        // Show detailed error message
+        const errorMsg = data.message || 'Failed to upload images';
+        console.error('Upload error:', { status: response.status, data });
+        throw new Error(errorMsg);
       }
 
       alert('Images uploaded successfully!');
       setShowAddModal(false);
-      setNewItem({ title: '', description: '' });
+      setNewItem({ description: '' });
       setSelectedFiles([]);
       await fetchGalleryItems();
     } catch (error) {
       console.error('Error uploading images:', error);
-      alert(error instanceof Error ? error.message : 'Failed to upload images');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to upload images';
+      alert(`Error: ${errorMessage}\n\nPlease check the console for more details.`);
     }
   };
 
@@ -126,9 +153,21 @@ export default function AdminGalleryPage() {
 
     try {
       const token = localStorage.getItem('token');
+      const userStr = localStorage.getItem('user');
+      
       if (!token) {
-        alert('Authentication required. Please login.');
+        alert('Authentication required. Please login again.');
+        window.location.href = '/login';
         return;
+      }
+
+      // Debug: Check user role
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        if (user.role !== 'admin') {
+          alert('Admin access required. Your current role is: ' + user.role);
+          return;
+        }
       }
 
       const response = await fetch(`${API_URL}/api/gallery/${id}`, {
@@ -141,6 +180,7 @@ export default function AdminGalleryPage() {
       const data = await response.json();
 
       if (!response.ok) {
+        console.error('Delete error:', { status: response.status, data });
         throw new Error(data.message || 'Failed to delete item');
       }
 
@@ -148,7 +188,8 @@ export default function AdminGalleryPage() {
       await fetchGalleryItems();
     } catch (error) {
       console.error('Error deleting item:', error);
-      alert(error instanceof Error ? error.message : 'Failed to delete item');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to delete item';
+      alert(`Error: ${errorMessage}\n\nPlease check the console for more details.`);
     }
   };
 
@@ -197,10 +238,40 @@ export default function AdminGalleryPage() {
             Manage your resort images with bento box layout
           </p>
         </div>
-        <Button onClick={() => setShowAddModal(true)} className="gap-2">
-          <Plus className="w-4 h-4" />
-          Add Gallery Item
-        </Button>
+        <div className="flex items-center gap-4">
+          {/* {currentUserRole && currentUserRole !== 'admin' && (
+            <div className="flex items-center gap-2 px-4 py-2 bg-destructive/10 text-destructive rounded-lg border border-destructive/20">
+              <AlertCircle className="w-4 h-4" />
+              <span className="text-sm font-medium">
+                Current role: <strong>{currentUserRole}</strong> (Admin required)
+              </span>
+              <Button 
+                size="sm" 
+                variant="destructive"
+                onClick={() => {
+                  localStorage.clear();
+                  window.location.href = '/login';
+                }}
+                className="ml-2"
+              >
+                Login as Admin
+              </Button>
+            </div>
+          )}
+          {currentUserRole === 'admin' && (
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-green-500/10 text-green-600 rounded-lg border border-green-500/20">
+              <span className="text-xs font-medium">✓ Admin Access</span>
+            </div>
+          )} */}
+          <Button 
+            onClick={() => setShowAddModal(true)} 
+            className="gap-2"
+            // disabled={currentUserRole !== 'admin'}
+          >
+            <Plus className="w-4 h-4" />
+            Add Gallery Item
+          </Button>
+        </div>
       </div>
 
       {galleryItems.length === 0 ? (
@@ -241,12 +312,12 @@ export default function AdminGalleryPage() {
                 className={`${getGridClass(index)} relative group overflow-hidden cursor-pointer hover:shadow-2xl transition-all border-2 hover:border-primary`}
                 onClick={() => setSelectedItem(item)}
               >
-                <div className="relative w-full h-full">
+                <div className="relative w-full h-full bg-muted">
                   <Image 
                     src={imageUrl} 
-                    alt={item.title || item.description || 'Gallery item'}
+                    alt={item.description || 'Gallery item'}
                     fill
-                    className="object-cover group-hover:scale-110 transition-transform duration-300"
+                    className="object-contain group-hover:scale-105 transition-transform duration-300"
                     sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                     onError={(e) => {
                       (e.target as HTMLImageElement).src = '/placeholder-room.svg';
@@ -254,8 +325,8 @@ export default function AdminGalleryPage() {
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                     <div className="absolute bottom-0 left-0 right-0 p-4">
-                      {item.title && (
-                        <h3 className="text-white font-bold text-lg mb-1">{item.title}</h3>
+                      {item.description && (
+                        <p className="text-white text-sm mb-1 line-clamp-2">{item.description}</p>
                       )}
                       {images.length > 1 && (
                         <p className="text-white/80 text-sm flex items-center gap-1">
@@ -298,19 +369,6 @@ export default function AdminGalleryPage() {
           </DialogHeader>
 
           <div className="space-y-4 mt-4">
-            <div>
-              <Label htmlFor="title" className="text-sm font-semibold">
-                Title (Optional)
-              </Label>
-              <Input
-                id="title"
-                value={newItem.title}
-                onChange={(e) => setNewItem({ ...newItem, title: e.target.value })}
-                placeholder="e.g., Pool Area, Sunset Views"
-                className="mt-1"
-              />
-            </div>
-
             <div>
               <Label htmlFor="description" className="text-sm font-semibold">
                 Description (Optional)
@@ -373,7 +431,7 @@ export default function AdminGalleryPage() {
               variant="outline" 
               onClick={() => {
                 setShowAddModal(false);
-                setNewItem({ title: '', description: '' });
+                setNewItem({ description: '' });
                 setSelectedFiles([]);
               }}
               className="border-red-500 text-red-500 hover:bg-red-500 hover:text-white"
@@ -398,7 +456,7 @@ export default function AdminGalleryPage() {
             <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle className="text-xl">
-                  {selectedItem.title || 'Gallery Item'}
+                  Gallery Item
                 </DialogTitle>
                 {selectedItem.description && (
                   <DialogDescription>{selectedItem.description}</DialogDescription>
@@ -407,12 +465,12 @@ export default function AdminGalleryPage() {
 
               <div className="grid grid-cols-2 gap-4 mt-4">
                 {images.map((url, idx) => (
-                  <div key={idx} className="relative aspect-square rounded-lg overflow-hidden border-2">
+                  <div key={idx} className="relative aspect-square rounded-lg overflow-hidden border-2 bg-muted">
                     <Image
                       src={url}
-                      alt={`${selectedItem.title || 'Gallery'} - ${idx + 1}`}
+                      alt={`Gallery - ${idx + 1}`}
                       fill
-                      className="object-cover"
+                      className="object-contain"
                       sizes="(max-width: 768px) 100vw, 50vw"
                       onError={(e) => {
                         (e.target as HTMLImageElement).src = '/placeholder-room.svg';
