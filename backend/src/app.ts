@@ -11,6 +11,8 @@ import galleryRoutes from './routes/gallery.routes.js';
 import verificationRoutes from './routes/verification.routes.js';
 import emailLogRoutes from './routes/email-log.routes.js';
 import pricingRoutes from './routes/pricing.routes.js';
+import walkInRoutes from './routes/walk-in.routes.js';
+import reportRoutes from './routes/report.routes.js';
 import { errorHandler } from './middlewares/error.middleware.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -33,12 +35,14 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 app.use('/api/auth', authRoutes);
 app.use('/api/accommodations', accommodationRoutes);
 app.use('/api/bookings', bookingRoutes);
-app.use('/api/event-bookings', eventBookingRoutes);
+app.use('/api/event_bookings', eventBookingRoutes);
 app.use('/api/availability', availabilityRoutes);
 app.use('/api/gallery', galleryRoutes);
 app.use('/api/verification', verificationRoutes);
-app.use('/api/email-logs', emailLogRoutes);
+app.use('/api/email_logs', emailLogRoutes);
 app.use('/api/pricing', pricingRoutes);
+app.use('/api/walk_in', walkInRoutes);
+app.use('/api/reports', reportRoutes);
 
 // API root endpoint
 app.get('/api', (req, res) => {
@@ -50,12 +54,14 @@ app.get('/api', (req, res) => {
       auth: '/api/auth',
       accommodations: '/api/accommodations',
       bookings: '/api/bookings',
-      eventBookings: '/api/event-bookings',
+      eventBookings: '/api/event_bookings',
       availability: '/api/availability',
       gallery: '/api/gallery',
       verification: '/api/verification',
-      emailLogs: '/api/email-logs',
+      emailLogs: '/api/email_logs',
       pricing: '/api/pricing',
+      walkIn: '/api/walk_in',
+      reports: '/api/reports',
       health: '/api/health',
     },
   });

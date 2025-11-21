@@ -6,7 +6,6 @@ import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Checkbox } from '../../components/ui/checkbox';
-import EmailVerification from '../../components/EmailVerification';
 import { Loader2 } from 'lucide-react';
 import { API_URL } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -17,7 +16,6 @@ export default function SignupPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [showVerification, setShowVerification] = useState(false);
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -113,8 +111,8 @@ export default function SignupPage() {
         variant: "default",
       });
 
-      // Show verification modal
-      setShowVerification(true);
+      // Redirect to verification page
+      router.push(`/verify-email?email=${encodeURIComponent(formData.email)}&name=${encodeURIComponent(fullName)}`);
     } catch (err: any) {
       setError(err.message || 'Failed to register. Please try again.');
       toast({
@@ -125,16 +123,6 @@ export default function SignupPage() {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleVerified = async () => {
-    // User is already created and verified, just redirect to login
-    toast({
-      title: "Email Verified! ✓",
-      description: "Your account has been verified. Redirecting to login...",
-      variant: "default",
-    });
-    setTimeout(() => router.push('/login?verified=true'), 1000);
   };
 
   return (
@@ -305,15 +293,6 @@ export default function SignupPage() {
            &copy; {new Date().getFullYear()} Elimar Spring Garden. All rights reserved.
         </div>
       </div>
-
-      {/* Email Verification Modal */}
-      <EmailVerification
-        email={formData.email}
-        name={`${formData.firstName} ${formData.lastName}`.trim()}
-        isOpen={showVerification}
-        onClose={() => setShowVerification(false)}
-        onVerified={handleVerified}
-      />
     </div>
   );
 }

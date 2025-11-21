@@ -4,7 +4,7 @@ import { authenticate, requireAdmin } from '../middlewares/auth.middleware.js';
 
 const router = Router();
 
-// GET /api/email-logs - Get email logs (admin only)
+// GET /api/email_logs - Get email logs (admin only)
 router.get('/', authenticate, requireAdmin, getEmailLogsController);
 
 export default router;

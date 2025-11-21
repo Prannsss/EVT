@@ -8,10 +8,17 @@ export interface Booking {
   adults: number;
   kids: number;
   pwd: number;
+  senior: number;
+  adult_swimming: number;
+  kid_swimming: number;
+  pwd_swimming: number;
+  senior_swimming: number;
+  guest_names: string | null;
   overnight_stay: boolean;
   overnight_swimming: boolean;
   total_price: number;
   status: 'pending' | 'approved' | 'cancelled' | 'completed';
+  checked_out_at: Date | null;
   proof_of_payment_url: string | null;
   created_at: Date;
   updated_at: Date;
@@ -26,6 +33,11 @@ export interface BookingCreate {
   adults: number;
   kids: number;
   pwd: number;
+  senior: number;
+  adult_swimming?: number;
+  kid_swimming?: number;
+  pwd_swimming?: number;
+  senior_swimming?: number;
   overnight_stay: boolean;
   overnight_swimming: boolean;
   total_price: number;
@@ -35,4 +47,6 @@ export interface BookingCreate {
 export interface BookingUpdate {
   status?: 'pending' | 'approved' | 'cancelled' | 'completed';
   proof_of_payment_url?: string;
+  guest_names?: string;
+  checked_out_at?: string;
 }

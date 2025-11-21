@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Nov 11, 2025 at 07:43 AM
+-- Generation Time: Nov 21, 2025 at 09:34 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -59,11 +59,17 @@ CREATE TABLE `bookings` (
   `user_id` int(11) NOT NULL,
   `accommodation_id` int(11) NOT NULL,
   `check_in_date` date NOT NULL,
+  `check_out_date` date DEFAULT NULL COMMENT 'Check-out date for overnight stays',
   `booking_time` time DEFAULT '09:00:00' COMMENT 'Client-selected booking time',
-  `check_out_date` date DEFAULT NULL,
   `adults` int(11) DEFAULT 0,
   `kids` int(11) DEFAULT 0,
   `pwd` int(11) DEFAULT 0,
+  `senior` int(11) DEFAULT 0 COMMENT 'Number of senior citizens',
+  `adult_swimming` int(11) DEFAULT 0 COMMENT 'Number of adults with swimming',
+  `kid_swimming` int(11) DEFAULT 0 COMMENT 'Number of kids with swimming',
+  `pwd_swimming` int(11) DEFAULT 0 COMMENT 'Number of PWD with swimming',
+  `senior_swimming` int(11) DEFAULT 0 COMMENT 'Number of seniors with swimming',
+  `guest_names` text DEFAULT NULL COMMENT 'JSON array of guest names with types (adult, kid, pwd, senior)',
   `overnight_stay` tinyint(1) DEFAULT 0,
   `overnight_swimming` tinyint(1) DEFAULT 0,
   `total_price` decimal(10,2) NOT NULL,
@@ -199,6 +205,30 @@ CREATE TABLE `users` (
 INSERT INTO `users` (`id`, `name`, `email`, `contact_number`, `password`, `role`, `email_verified`, `created_at`, `updated_at`) VALUES
 (1, 'Admin', 'admin@elimar.com', NULL, '$2b$10$cB9QlRH0SVQkaQAagSHjluwFdz1i2bWIEAxFFVOWc.FpAdtBzKJ42', 'admin', 1, '2025-11-01 08:12:43', '2025-11-01 08:12:43');
 
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `walk_in_logs`
+--
+
+CREATE TABLE `walk_in_logs` (
+  `id` int(11) NOT NULL,
+  `client_name` varchar(150) NOT NULL,
+  `guest_names` text DEFAULT NULL,
+  `address` text DEFAULT NULL,
+  `accommodation_id` int(11) DEFAULT NULL,
+  `check_in_date` date NOT NULL,
+  `adults` int(11) DEFAULT 0,
+  `kids` int(11) DEFAULT 0,
+  `pwd` int(11) DEFAULT 0,
+  `amount_paid` decimal(10,2) DEFAULT 0.00,
+  `checked_out` tinyint(1) NOT NULL DEFAULT 0,
+  `checked_out_at` timestamp NULL DEFAULT NULL,
+  `created_by` int(11) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
 --
 -- Indexes for dumped tables
 --
@@ -266,6 +296,16 @@ ALTER TABLE `users`
   ADD UNIQUE KEY `email` (`email`);
 
 --
+-- Indexes for table `walk_in_logs`
+--
+ALTER TABLE `walk_in_logs`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_check_in_date` (`check_in_date`),
+  ADD KEY `accommodation_id` (`accommodation_id`),
+  ADD KEY `created_by` (`created_by`),
+  ADD KEY `idx_checked_out` (`checked_out`);
+
+--
 -- AUTO_INCREMENT for dumped tables
 --
 
@@ -279,25 +319,25 @@ ALTER TABLE `accommodations`
 -- AUTO_INCREMENT for table `bookings`
 --
 ALTER TABLE `bookings`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `email_logs`
 --
 ALTER TABLE `email_logs`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `email_verification_codes`
 --
 ALTER TABLE `email_verification_codes`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `event_bookings`
 --
 ALTER TABLE `event_bookings`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `gallery`
@@ -315,7 +355,13 @@ ALTER TABLE `pricing_settings`
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+
+--
+-- AUTO_INCREMENT for table `walk_in_logs`
+--
+ALTER TABLE `walk_in_logs`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- Constraints for dumped tables
@@ -333,6 +379,13 @@ ALTER TABLE `bookings`
 --
 ALTER TABLE `event_bookings`
   ADD CONSTRAINT `event_bookings_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `walk_in_logs`
+--
+ALTER TABLE `walk_in_logs`
+  ADD CONSTRAINT `walk_in_logs_ibfk_1` FOREIGN KEY (`accommodation_id`) REFERENCES `accommodations` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `walk_in_logs_ibfk_2` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

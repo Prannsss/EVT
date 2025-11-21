@@ -24,6 +24,8 @@ export function Header() {
   const [isLoggedIn, setIsLoggedIn] = React.useState(false);
   const [userName, setUserName] = React.useState("");
   const [isLoggingOut, setIsLoggingOut] = React.useState(false);
+  const [isScrolled, setIsScrolled] = React.useState(false);
+  const isHomePage = pathname === '/';
 
   React.useEffect(() => {
     // Check if user is logged in
@@ -39,6 +41,14 @@ export function Header() {
         console.error("Failed to parse user data:", e);
       }
     }
+
+    // Scroll detection
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 10);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
   const handleLogout = async () => {
@@ -56,12 +66,23 @@ export function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="w-full max-w-[1400px] mx-auto flex h-16 items-center px-4 sm:px-8 md:px-12 lg:px-16 xl:px-20">
+    <header className={cn(
+      "fixed top-0 left-0 right-0 z-50 w-full transition-all duration-300",
+      isScrolled || !isHomePage
+        ? "border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60" 
+        : ""
+    )}>
+      <div className={cn(
+        "w-full max-w-[1400px] mx-auto flex h-16 items-center px-4 sm:px-8 md:px-12 lg:px-16 xl:px-20",
+        !isScrolled && isHomePage ? "text-white" : "text-foreground"
+      )}>
         {/* Desktop Nav: Left side */}
         <div className="flex-1 hidden md:flex">
           <Link href="/" className="flex items-center">
-            <span className="font-bold font-headline ml-2">
+            <span className={cn(
+              "font-bold font-headline ml-2",
+              !isScrolled && isHomePage ? "text-foreground" : "text-foreground"
+            )}>
               Elimar Spring Garden
             </span>
           </Link>
@@ -69,14 +90,17 @@ export function Header() {
 
         {/* Desktop Nav: Center */}
         <div className="flex-1 justify-center hidden md:flex">
-            <nav className="flex items-center space-x-6 text-sm font-medium">
+            <nav className="flex items-center space-x-2 text-sm font-medium">
               {navLinks.map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}
                   className={cn(
-                    "transition-colors hover:text-foreground/80",
-                    pathname === link.href ? "text-foreground" : "text-foreground/60"
+                    "px-4 py-2 rounded-full transition-all duration-200",
+                    !isScrolled && isHomePage && pathname === link.href && "bg-blue-500 text-white",
+                    !isScrolled && isHomePage && pathname !== link.href && "text-foreground hover:bg-blue-500 hover:text-white",
+                    (isScrolled || !isHomePage) && pathname === link.href && "bg-blue-500 text-white",
+                    (isScrolled || !isHomePage) && pathname !== link.href && "text-foreground hover:bg-blue-500 hover:text-white"
                   )}
                 >
                   {link.label}
@@ -120,7 +144,10 @@ export function Header() {
         {/* Mobile Title */}
         <div className="absolute left-1/2 -translate-x-1/2 md:hidden">
              <Link href="/" className="flex items-center">
-                <span className="font-bold font-headline text-lg">
+                <span className={cn(
+                  "font-bold font-headline text-lg",
+                  !isScrolled && isHomePage ? "text-foreground" : "text-foreground"
+                )}>
                     Elimar
                 </span>
             </Link>
@@ -155,8 +182,8 @@ export function Header() {
               </Button>
             </>
           ) : (
-            <Button asChild>
-              <Link href="/login">Login</Link>
+            <Button asChild className="bg-blue-500 hover:bg-blue-600 text-white rounded-full">
+              <Link href="/login">Log-In</Link>
             </Button>
           )}
         </div>

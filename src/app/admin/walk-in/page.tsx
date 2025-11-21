@@ -1,0 +1,890 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { Plus, Edit, Trash2, Loader2, MoreVertical, UserCheck, X, Calendar, Eye, User, Home, MapPin } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:9002';
+
+interface Accommodation {
+  id: number;
+  name: string;
+  type: 'room' | 'cottage';
+  capacity: string;
+  price: number;
+}
+
+interface Guest {
+  id: string;
+  name: string;
+  type: 'adult' | 'kid' | 'senior' | 'pwd';
+}
+
+interface WalkInLog {
+  id: number;
+  client_name: string;
+  guest_names: string | null;
+  address: string | null;
+  accommodation_id: number | null;
+  accommodation_name?: string;
+  check_in_date: string;
+  adults: number;
+  kids: number;
+  pwd: number;
+  amount_paid: number;
+  checked_out: boolean;
+  checked_out_at?: string | null;
+  created_at: string;
+  created_by_name?: string;
+}
+
+export default function WalkInPage() {
+  const { toast } = useToast();
+  const [logs, setLogs] = useState<WalkInLog[]>([]);
+  const [accommodations, setAccommodations] = useState<Accommodation[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingLog, setEditingLog] = useState<WalkInLog | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [activeTab, setActiveTab] = useState<'ongoing' | 'completed'>('ongoing');
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [selectedLog, setSelectedLog] = useState<WalkInLog | null>(null);
+  const [isCheckoutDialogOpen, setIsCheckoutDialogOpen] = useState(false);
+  const [checkoutLogId, setCheckoutLogId] = useState<number | null>(null);
+
+  // Guest list state
+  const [guests, setGuests] = useState<Guest[]>([
+    { id: crypto.randomUUID(), name: '', type: 'adult' }
+  ]);
+
+  const [formData, setFormData] = useState({
+    client_name: '',
+    address: '',
+    accommodation_id: '',
+    check_in_date: new Date().toISOString().split('T')[0],
+    amount_paid: '' as string | number,
+  });
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('token');
+
+      const [logsRes, accommodationsRes] = await Promise.all([
+        fetch(`${API_URL}/api/walk_in`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch(`${API_URL}/api/accommodations`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      ]);
+
+      if (logsRes.ok) {
+        const logsData = await logsRes.json();
+        setLogs(logsData.data || []);
+      }
+
+      if (accommodationsRes.ok) {
+        const accommodationsData = await accommodationsRes.json();
+        setAccommodations(accommodationsData.data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load data',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+
+    try {
+      const token = localStorage.getItem('token');
+      const url = editingLog
+        ? `${API_URL}/api/walk_in/${editingLog.id}`
+        : `${API_URL}/api/walk_in`;
+      const method = editingLog ? 'PUT' : 'POST';
+
+      // Serialize guests to JSON string
+      const guestNamesJson = JSON.stringify(guests);
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          ...formData,
+          guest_names: guestNamesJson,
+          accommodation_id: formData.accommodation_id ? parseInt(formData.accommodation_id) : null,
+          adults: 0,
+          kids: 0,
+          pwd: 0,
+          amount_paid: formData.amount_paid === '' ? 0 : Number(formData.amount_paid),
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save walk-in log');
+      }
+
+      toast({
+        title: 'Success',
+        description: `Walk-in log ${editingLog ? 'updated' : 'created'} successfully`,
+      });
+
+      setIsDialogOpen(false);
+      resetForm();
+      fetchData();
+    } catch (error) {
+      console.error('Error saving walk-in log:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to save walk-in log',
+        variant: 'destructive',
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleEdit = (log: WalkInLog) => {
+    setEditingLog(log);
+    setFormData({
+      client_name: log.client_name,
+      address: log.address || '',
+      accommodation_id: log.accommodation_id?.toString() || '',
+      check_in_date: log.check_in_date,
+      amount_paid: log.amount_paid || '',
+    });
+
+    // Parse guest_names JSON or create default guest
+    try {
+      if (log.guest_names) {
+        const parsedGuests = JSON.parse(log.guest_names) as Guest[];
+        setGuests(parsedGuests.length > 0 ? parsedGuests : [{ id: crypto.randomUUID(), name: '', type: 'adult' }]);
+      } else {
+        setGuests([{ id: crypto.randomUUID(), name: '', type: 'adult' }]);
+      }
+    } catch {
+      setGuests([{ id: crypto.randomUUID(), name: '', type: 'adult' }]);
+    }
+
+    setIsDialogOpen(true);
+  };
+
+  const handleView = (log: WalkInLog) => {
+    setSelectedLog(log);
+    setIsDetailsModalOpen(true);
+  };
+
+  const handleCheckOut = async (logId: number) => {
+    setCheckoutLogId(logId);
+    setIsCheckoutDialogOpen(true);
+  };
+
+  const confirmCheckOut = async () => {
+    if (!checkoutLogId) return;
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_URL}/api/walk_in/${checkoutLogId}/checkout`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to check out walk-in log');
+      }
+
+      toast({
+        title: 'Success',
+        description: 'Guest checked out successfully',
+      });
+
+      fetchData();
+    } catch (error) {
+      console.error('Error checking out walk-in log:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to check out walk-in log',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsCheckoutDialogOpen(false);
+      setCheckoutLogId(null);
+    }
+  };
+
+  const handleDelete = async (logId: number) => {
+    if (!confirm('Are you sure you want to delete this walk-in log?')) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_URL}/api/walk_in/${logId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete walk-in log');
+      }
+
+      toast({
+        title: 'Success',
+        description: 'Walk-in log deleted successfully',
+      });
+
+      fetchData();
+    } catch (error) {
+      console.error('Error deleting walk-in log:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to delete walk-in log',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const resetForm = () => {
+    setEditingLog(null);
+    setGuests([{ id: crypto.randomUUID(), name: '', type: 'adult' }]);
+    setFormData({
+      client_name: '',
+      address: '',
+      accommodation_id: '',
+      check_in_date: new Date().toISOString().split('T')[0],
+      amount_paid: '',
+    });
+  };
+
+  const addGuest = () => {
+    setGuests([...guests, { id: crypto.randomUUID(), name: '', type: 'adult' }]);
+  };
+
+  const removeGuest = (id: string) => {
+    if (guests.length === 1) {
+      toast({
+        title: 'Cannot remove',
+        description: 'At least one guest is required',
+        variant: 'destructive',
+      });
+      return;
+    }
+    setGuests(guests.filter(guest => guest.id !== id));
+  };
+
+  const updateGuest = (id: string, field: 'name' | 'type', value: string) => {
+    setGuests(guests.map(guest => 
+      guest.id === id ? { ...guest, [field]: value } : guest
+    ));
+  };
+
+  // Filter logs by tab
+  const filteredLogs = logs.filter(log => 
+    activeTab === 'ongoing' ? !log.checked_out : log.checked_out
+  );
+
+  // Calculate total guests from guest_names JSON
+  const getTotalGuests = (log: WalkInLog): number => {
+    try {
+      if (log.guest_names) {
+        const guests = JSON.parse(log.guest_names) as Guest[];
+        // Add 1 for the client
+        return guests.length + 1;
+      }
+    } catch {
+      // Fallback to old calculation if JSON parsing fails
+      return (log.adults || 0) + (log.kids || 0) + (log.pwd || 0) + 1;
+    }
+    // Default: client only
+    return 1;
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Walk-In Log Book</h1>
+          <p className="text-muted-foreground mt-1">
+            Manage walk-in guests and their accommodation details
+          </p>
+        </div>
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
+            <Button onClick={() => resetForm()}>
+              <Plus className="w-4 h-4 mr-2" />
+              Add Walk-In
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>
+                {editingLog ? 'Edit Walk-In Log' : 'Add Walk-In Guest'}
+              </DialogTitle>
+              <DialogDescription>
+                Enter the guest details and assign an available accommodation
+              </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2">
+                  <Label htmlFor="client_name">Client Name *</Label>
+                  <Input
+                    id="client_name"
+                    value={formData.client_name}
+                    onChange={(e) =>
+                      setFormData({ ...formData, client_name: e.target.value })
+                    }
+                    required
+                  />
+                </div>
+
+                <div className="col-span-2">
+                  <div className="flex items-center justify-between mb-2">
+                    <Label>Guest Names</Label>
+                    <Button type="button" size="sm" className="text-primary" variant="outline" onClick={addGuest}>
+                      <Plus className="w-4 h-4 mr-1 text-primary" />
+                      Add Guest
+                    </Button>
+                  </div>
+                  <div className="space-y-2">
+                    {guests.map((guest) => (
+                      <div key={guest.id} className="flex items-center gap-2">
+                        <Input
+                          placeholder="Guest name"
+                          value={guest.name}
+                          onChange={(e) => updateGuest(guest.id, 'name', e.target.value)}
+                          className="flex-1"
+                        />
+                        <Select
+                          value={guest.type}
+                          onValueChange={(value) => updateGuest(guest.id, 'type', value)}
+                        >
+                          <SelectTrigger className="w-[140px]">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="adult">Adult</SelectItem>
+                            <SelectItem value="kid">Kid</SelectItem>
+                            <SelectItem value="senior">Senior</SelectItem>
+                            <SelectItem value="pwd">PWD</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => removeGuest(guest.id)}
+                          disabled={guests.length === 1}
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="col-span-2">
+                  <Label htmlFor="address">Address</Label>
+                  <Input
+                    id="address"
+                    value={formData.address}
+                    onChange={(e) =>
+                      setFormData({ ...formData, address: e.target.value })
+                    }
+                  />
+                </div>
+
+                <div className="col-span-2">
+                  <Label htmlFor="accommodation_id">Cottage or Room</Label>
+                  <Select
+                    value={formData.accommodation_id}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, accommodation_id: value })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select accommodation" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {accommodations.map((acc) => (
+                        <SelectItem key={acc.id} value={acc.id.toString()}>
+                          {acc.name} ({acc.type}) - ₱{acc.price}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="col-span-2">
+                  <Label htmlFor="check_in_date">Check-In Date *</Label>
+                  <Input
+                    id="check_in_date"
+                    type="date"
+                    value={formData.check_in_date}
+                    onChange={(e) =>
+                      setFormData({ ...formData, check_in_date: e.target.value })
+                    }
+                    required
+                  />
+                </div>
+
+                <div className="col-span-2">
+                  <Label htmlFor="amount_paid">Amount Paid (₱)</Label>
+                  <Input
+                    id="amount_paid"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={formData.amount_paid}
+                    onChange={(e) =>
+                      setFormData({ ...formData, amount_paid: e.target.value === '' ? '' : parseFloat(e.target.value) })
+                    }
+                    placeholder="0.00"
+                  />
+                </div>
+              </div>
+
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsDialogOpen(false)}
+                  disabled={submitting}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={submitting}>
+                  {submitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>{editingLog ? 'Update' : 'Add'} Walk-In</>
+                  )}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'ongoing' | 'completed')}>
+        <TabsList className="mb-4">
+          <TabsTrigger value="ongoing" className="gap-2">
+            <Calendar className="w-4 h-4" />
+            Ongoing ({logs.filter(log => !log.checked_out).length})
+          </TabsTrigger>
+          <TabsTrigger value="completed" className="gap-2">
+            <UserCheck className="w-4 h-4" />
+            Completed ({logs.filter(log => log.checked_out).length})
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="ongoing">
+          <Card className="shadow-lg border-2">
+            <CardHeader className="border-b bg-gradient-to-r from-primary/5 to-primary/10">
+              <CardTitle className="flex items-center gap-2">
+                <Calendar className="w-5 h-5 text-primary" />
+                Ongoing Walk-Ins
+              </CardTitle>
+              <CardDescription className="mt-1">Active walk-in guests currently at the resort</CardDescription>
+            </CardHeader>
+            <CardContent className="p-0">
+              {filteredLogs.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  No ongoing walk-ins. Click "Add Walk-In" to create one.
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Client Name</TableHead>
+                        <TableHead>Accommodation</TableHead>
+                        <TableHead>Check-In</TableHead>
+                        <TableHead>Guests</TableHead>
+                        <TableHead>Amount</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredLogs.map((log) => (
+                        <TableRow key={log.id} className="hover:bg-muted/50">
+                          <TableCell className="font-medium">{log.client_name}</TableCell>
+                          <TableCell>{log.accommodation_name || 'N/A'}</TableCell>
+                          <TableCell>
+                            {new Date(log.check_in_date).toLocaleDateString()}
+                          </TableCell>
+                          <TableCell>
+                            {getTotalGuests(log)} {getTotalGuests(log) === 1 ? 'guest' : 'guests'}
+                          </TableCell>
+                          <TableCell>
+                            <div className="font-semibold text-green-600">
+                              ₱{(log.amount_paid || 0).toLocaleString()}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button size="sm" variant="ghost">
+                                  <MoreVertical className="w-4 h-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleView(log)}>
+                                  <Eye className="w-4 h-4 mr-2" />
+                                  View
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  className="text-blue-600"
+                                  onClick={() => handleCheckOut(log.id)}
+                                >
+                                  <UserCheck className="w-4 h-4 mr-2" />
+                                  Check-out
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  onClick={() => handleDelete(log.id)}
+                                  className="text-destructive"
+                                >
+                                  <Trash2 className="w-4 h-4 mr-2" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="completed">
+          <Card className="shadow-lg border-2">
+            <CardHeader className="border-b bg-gradient-to-r from-green-50 to-green-100 dark:from-green-950/30 dark:to-green-900/30">
+              <CardTitle className="flex items-center gap-2">
+                <UserCheck className="w-5 h-5 text-green-600" />
+                Completed Walk-Ins
+              </CardTitle>
+              <CardDescription className="mt-1">Checked-out walk-in guests</CardDescription>
+            </CardHeader>
+            <CardContent className="p-0">
+              {filteredLogs.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  No completed walk-ins yet.
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Client Name</TableHead>
+                        <TableHead>Accommodation</TableHead>
+                        <TableHead>Check-In</TableHead>
+                        <TableHead>Check-Out</TableHead>
+                        <TableHead>Guests</TableHead>
+                        <TableHead>Amount</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredLogs.map((log) => (
+                        <TableRow key={log.id} className="hover:bg-muted/50">
+                          <TableCell className="font-medium">{log.client_name}</TableCell>
+                          <TableCell>{log.accommodation_name || 'N/A'}</TableCell>
+                          <TableCell>
+                            {new Date(log.check_in_date).toLocaleDateString()}
+                          </TableCell>
+                          <TableCell>
+                            {log.checked_out_at 
+                              ? new Date(log.checked_out_at).toLocaleDateString()
+                              : 'N/A'}
+                          </TableCell>
+                          <TableCell>
+                            {getTotalGuests(log)} {getTotalGuests(log) === 1 ? 'guest' : 'guests'}
+                          </TableCell>
+                          <TableCell>
+                            <div className="font-semibold text-green-600">
+                              ₱{(log.amount_paid || 0).toLocaleString()}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button size="sm" variant="ghost">
+                                  <MoreVertical className="w-4 h-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleView(log)}>
+                                  <Eye className="w-4 h-4 mr-2" />
+                                  View
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  onClick={() => handleDelete(log.id)}
+                                  className="text-destructive"
+                                >
+                                  <Trash2 className="w-4 h-4 mr-2" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      {/* Walk-In Details Modal */}
+      <Dialog open={isDetailsModalOpen} onOpenChange={setIsDetailsModalOpen}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-2xl">Walk-In Guest Details</DialogTitle>
+            <DialogDescription>
+              Walk-In ID: #{selectedLog?.id}
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedLog && (
+            <div className="space-y-6 mt-4">
+              {/* Client Information */}
+              <div className="border rounded-lg p-4 bg-muted/30">
+                <h3 className="font-semibold text-lg mb-3 flex items-center gap-2">
+                  <User className="w-5 h-5 text-primary" />
+                  Client Information
+                </h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Name</p>
+                    <p className="font-medium">{selectedLog.client_name}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Address</p>
+                    <p className="font-medium flex items-center gap-2">
+                      <MapPin className="w-4 h-4" />
+                      {selectedLog.address || 'N/A'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Status</p>
+                    <Badge
+                      variant={selectedLog.checked_out ? 'default' : 'outline'}
+                      className={
+                        selectedLog.checked_out
+                          ? 'bg-green-50 text-green-700 border-green-200'
+                          : 'bg-blue-50 text-blue-700 border-blue-200'
+                      }
+                    >
+                      {selectedLog.checked_out ? 'Checked Out' : 'Ongoing'}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+
+              {/* Accommodation Information */}
+              <div className="border rounded-lg p-4 bg-muted/30">
+                <h3 className="font-semibold text-lg mb-3 flex items-center gap-2">
+                  <Home className="w-5 h-5 text-primary" />
+                  Accommodation Details
+                </h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Name</p>
+                    <p className="font-medium">{selectedLog.accommodation_name || 'N/A'}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Check-In/Out Information */}
+              <div className="border rounded-lg p-4 bg-muted/30">
+                <h3 className="font-semibold text-lg mb-3 flex items-center gap-2">
+                  <Calendar className="w-5 h-5 text-primary" />
+                  Check-In/Out Information
+                </h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Check-in Date</p>
+                    <p className="font-medium">{new Date(selectedLog.check_in_date).toLocaleDateString('en-US', { 
+                      year: 'numeric', 
+                      month: 'long', 
+                      day: 'numeric' 
+                    })}</p>
+                  </div>
+                  {selectedLog.checked_out && selectedLog.checked_out_at && (
+                    <div>
+                      <p className="text-sm text-muted-foreground">Check-out Date</p>
+                      <p className="font-medium">{new Date(selectedLog.checked_out_at).toLocaleDateString('en-US', { 
+                        year: 'numeric', 
+                        month: 'long', 
+                        day: 'numeric' 
+                      })}</p>
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-sm text-muted-foreground">Created At</p>
+                    <p className="font-medium">{new Date(selectedLog.created_at).toLocaleDateString('en-US', { 
+                      year: 'numeric', 
+                      month: 'long', 
+                      day: 'numeric' 
+                    })}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Guest Information */}
+              <div className="border rounded-lg p-4 bg-muted/30">
+                <h3 className="font-semibold text-lg mb-3 flex items-center gap-2">
+                  <UserCheck className="w-5 h-5 text-primary" />
+                  Guest Information
+                </h3>
+                <div className="space-y-2">
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-2">Total Guests</p>
+                    <p className="font-medium text-lg">{getTotalGuests(selectedLog)} {getTotalGuests(selectedLog) === 1 ? 'guest' : 'guests'}</p>
+                  </div>
+                  {selectedLog.guest_names && (() => {
+                    try {
+                      const guests = JSON.parse(selectedLog.guest_names) as Guest[];
+                      if (guests.length > 0) {
+                        return (
+                          <div className="mt-4">
+                            <p className="text-sm text-muted-foreground mb-2">Guest List</p>
+                            <div className="space-y-2">
+                              {guests.map((guest, index) => (
+                                <div key={index} className="flex items-center justify-between p-2 bg-background rounded border">
+                                  <span className="font-medium">{guest.name || `Guest ${index + 1}`}</span>
+                                  <Badge variant="outline" className="capitalize">{guest.type}</Badge>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      }
+                    } catch {
+                      return null;
+                    }
+                    return null;
+                  })()}
+                </div>
+              </div>
+
+              {/* Payment Information */}
+              <div className="border rounded-lg p-4 bg-muted/30">
+                <h3 className="font-semibold text-lg mb-3 flex items-center gap-2">
+                  <Home className="w-5 h-5 text-primary" />
+                  Payment Information
+                </h3>
+                <div>
+                  <p className="text-sm text-muted-foreground">Amount Paid</p>
+                  <p className="font-bold text-2xl text-green-600">
+                    ₱{(selectedLog.amount_paid || 0).toLocaleString('en-PH')}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Checkout Confirmation Dialog */}
+      <AlertDialog open={isCheckoutDialogOpen} onOpenChange={setIsCheckoutDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Check-Out</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to check out this guest? This action will mark the walk-in as completed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={confirmCheckOut}>
+              Yes, Check Out
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}

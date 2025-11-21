@@ -10,6 +10,7 @@ import {
 } from '../models/event-booking.model.js';
 import { findUserById } from '../models/user.model.js';
 import { checkEventBookingAvailability } from '../services/availability.service.js';
+import { sendCheckOutThankYouEmail, sendBookingNotificationEmail } from '../services/email.service.js';
 import { successResponse, errorResponse } from '../utils/response.js';
 
 export const getEventBookings = async (req: Request, res: Response) => {
@@ -208,6 +209,19 @@ export const approveEventBooking = async (req: Request, res: Response) => {
       return res.status(400).json(errorResponse('Approval failed', 400));
     }
 
+    // Send approval notification email
+    const user = await findUserById(booking.user_id);
+    if (user) {
+      await sendBookingNotificationEmail({
+        to: user.email,
+        clientName: user.name,
+        status: 'approved',
+        bookingId: id,
+        accommodation: `Event: ${booking.event_type.replace('_', ' ').toUpperCase()}`,
+        checkIn: booking.booking_date.toString().split('T')[0],
+      });
+    }
+
     res.json(successResponse(null, 'Event booking approved successfully'));
   } catch (error: any) {
     console.error('Approve event booking error:', error);
@@ -233,6 +247,19 @@ export const rejectEventBooking = async (req: Request, res: Response) => {
 
     if (!success) {
       return res.status(400).json(errorResponse('Rejection failed', 400));
+    }
+
+    // Send rejection notification email
+    const user = await findUserById(booking.user_id);
+    if (user) {
+      await sendBookingNotificationEmail({
+        to: user.email,
+        clientName: user.name,
+        status: 'rejected',
+        bookingId: id,
+        accommodation: `Event: ${booking.event_type.replace('_', ' ').toUpperCase()}`,
+        checkIn: booking.booking_date.toString().split('T')[0],
+      });
     }
 
     res.json(successResponse(null, 'Event booking rejected successfully'));
@@ -265,6 +292,23 @@ export const checkOutEventBooking = async (req: Request, res: Response) => {
       'UPDATE event_bookings SET status = ?, checked_out_at = NOW() WHERE id = ?',
       ['completed', id]
     );
+
+    // Get updated booking details
+    const updatedBooking = await getEventBookingById(id);
+    
+    // Send thank you email
+    const user = await findUserById(booking.user_id);
+    if (user && updatedBooking) {
+      await sendCheckOutThankYouEmail({
+        clientEmail: user.email,
+        clientName: user.name,
+        bookingDetails: {
+          accommodationName: `Event: ${updatedBooking.event_type.replace('_', ' ').toUpperCase()}`,
+          checkInDate: updatedBooking.booking_date,
+          amountPaid: updatedBooking.total_price,
+        },
+      });
+    }
 
     res.json(successResponse(null, 'Event booking checked out successfully'));
   } catch (error: any) {

@@ -4,7 +4,6 @@ import { hashPassword, comparePassword } from '../utils/password.js';
 import { generateToken } from '../utils/jwt.js';
 import { successResponse, errorResponse } from '../utils/response.js';
 import { generateVerificationCode, createVerificationCode } from '../models/verification.model.js';
-import { sendVerificationEmail } from '../services/email.service.js';
 
 export const register = async (req: Request, res: Response) => {
   try {
@@ -29,10 +28,10 @@ export const register = async (req: Request, res: Response) => {
       role: 'user',
     });
 
-    // Generate and send verification code
+    // Generate verification code (email sending can be implemented via frontend service)
     const verificationCode = generateVerificationCode();
     await createVerificationCode(email, verificationCode, 15);
-    await sendVerificationEmail(email, name, verificationCode);
+    // Note: Email sending removed from backend - implement via frontend if needed
 
     res.status(201).json(
       successResponse(

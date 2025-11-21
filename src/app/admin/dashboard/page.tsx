@@ -41,6 +41,13 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import Link from 'next/link';
 
 // Register ChartJS components
@@ -85,10 +92,30 @@ interface Booking {
   user_name?: string;
   user_email?: string;
   // Event booking fields
-  booking_type?: 'regular' | 'event';
+  booking_type?: 'regular' | 'event' | 'walk-in';
   event_type?: 'whole_day' | 'evening' | 'morning';
   booking_date?: string;
   check_in_date?: string;
+}
+
+interface WalkInLog {
+  id: number;
+  client_name: string;
+  guest_names: string | null;
+  address: string | null;
+  accommodation_id: number | null;
+  check_in_date: string;
+  adults: number;
+  kids: number;
+  pwd: number;
+  amount_paid: number;
+  checked_out: boolean;
+  checked_out_at: string | null;
+  created_by: number | null;
+  created_at: string;
+  updated_at: string;
+  accommodation_name?: string;
+  created_by_name?: string;
 }
 
 export default function DashboardPage() {
@@ -136,26 +163,32 @@ export default function DashboardPage() {
         return;
       }
 
-      // Fetch both regular bookings and event bookings in parallel
-      const [regularResponse, eventResponse] = await Promise.all([
+      // Fetch regular bookings, event bookings, and walk-in logs in parallel
+      const [regularResponse, eventResponse, walkInResponse] = await Promise.all([
         fetch(`${API_URL}/api/bookings`, {
           headers: {
             'Authorization': `Bearer ${token}`,
           },
         }),
-        fetch(`${API_URL}/api/event-bookings`, {
+        fetch(`${API_URL}/api/event_bookings`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        }),
+        fetch(`${API_URL}/api/walk_in`, {
           headers: {
             'Authorization': `Bearer ${token}`,
           },
         })
       ]);
 
-      if (!regularResponse.ok || !eventResponse.ok) {
+      if (!regularResponse.ok || !eventResponse.ok || !walkInResponse.ok) {
         throw new Error('Failed to fetch bookings');
       }
 
       const regularData = await regularResponse.json();
       const eventData = await eventResponse.json();
+      const walkInData = await walkInResponse.json();
 
       // Mark booking types and combine
       const regularBookings = (regularData.data || []).map((booking: any) => ({
@@ -172,8 +205,24 @@ export default function DashboardPage() {
         guests: 0, // Events don't have individual guest counts
       }));
 
+      const walkInBookings = (walkInData.data || []).map((log: WalkInLog) => ({
+        id: log.id,
+        user_id: 0,
+        accommodation_id: log.accommodation_id,
+        check_in: log.check_in_date,
+        check_out: log.checked_out_at,
+        guests: log.adults + log.kids,
+        total_price: log.amount_paid,
+        status: log.checked_out ? 'completed' : 'confirmed',
+        created_at: log.created_at,
+        accommodation_name: log.accommodation_name || `Accommodation #${log.accommodation_id}`,
+        user_name: log.client_name,
+        user_email: '',
+        booking_type: 'walk-in' as const,
+      }));
+
       // Combine and sort by creation date
-      const allBookings = [...regularBookings, ...eventBookings].sort(
+      const allBookings = [...regularBookings, ...eventBookings, ...walkInBookings].sort(
         (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       );
 
@@ -187,7 +236,7 @@ export default function DashboardPage() {
     }
   };
 
-  // Calculate stats from bookings (both regular and event bookings)
+  // Calculate stats from bookings (regular, event, and walk-in bookings)
   const stats = {
     totalReservations: bookings.length,
     confirmedBookings: bookings.filter(b => 
@@ -309,7 +358,7 @@ export default function DashboardPage() {
           return (
             <Card
               key={index}
-              className="overflow-hidden transition-all hover:shadow-lg hover:-translate-y-1 duration-200"
+              className="overflow-hidden transition-all hover:shadow-lg duration-200"
             >
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -350,16 +399,17 @@ export default function DashboardPage() {
                 <CardTitle className="text-xl">Monthly Reservations</CardTitle>
                 <CardDescription>Reservation trends throughout the year</CardDescription>
               </div>
-              <select 
-                className="border rounded p-1 text-sm"
-                defaultValue="2025"
-                aria-label="Select year"
-              >
-                <option value="2023">2023</option>
-                <option value="2024">2024</option>
-                <option value="2025">2025</option>
-                <option value="2026">2026</option>
-              </select>
+              <Select defaultValue="2025">
+                <SelectTrigger className="w-[100px]">
+                  <SelectValue placeholder="Select year" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="2023">2023</SelectItem>
+                  <SelectItem value="2024">2024</SelectItem>
+                  <SelectItem value="2025">2025</SelectItem>
+                  <SelectItem value="2026">2026</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </CardHeader>
           <CardContent>

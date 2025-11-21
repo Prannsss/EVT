@@ -11,7 +11,8 @@ import {
   Settings,
   Home,
   FileText,
-  LogOut
+  LogOut,
+  UserPlus
 } from 'lucide-react';
 import {
   Sidebar,
@@ -31,13 +32,14 @@ const mainNavLinks = [
   { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/admin/bookings', label: 'Bookings', icon: Calendar },
   { href: '/admin/calendar', label: 'Calendar', icon: LayoutDashboard },
+  { href: '/admin/walk-in', label: 'Walk-In', icon: UserPlus },
   { href: '/admin/clients', label: 'Clients', icon: Users },
   { href: '/admin/gallery', label: 'Gallery', icon: GalleryHorizontal },
 ];
 
 const contentLinks = [
   { href: '/admin/accommodations', label: 'Accommodations', icon: Home },
-  { href: '/admin/reports', label: 'Reports', icon: FileText },
+  { href: '/admin/reports', label: 'Logs and Reports', icon: FileText },
 ];
 
 const settingsLinks = [

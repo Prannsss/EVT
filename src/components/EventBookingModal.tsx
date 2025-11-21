@@ -217,7 +217,7 @@ export default function EventBookingModal({ isOpen, onClose }: EventBookingModal
       formData.append('total_price', totalPrice.toString());
       formData.append('proof_of_payment', proofOfPayment);
 
-      const response = await fetch(`${API_URL}/api/event-bookings`, {
+      const response = await fetch(`${API_URL}/api/event_bookings`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

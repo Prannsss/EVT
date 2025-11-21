@@ -57,3 +57,21 @@ export const deleteExpiredCodes = async (): Promise<void> => {
 export const generateVerificationCode = (): string => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
+
+export const getAllVerificationRequests = async (): Promise<any[]> => {
+  const [rows] = await pool.execute<RowDataPacket[]>(
+    `SELECT 
+      evc.id,
+      evc.email,
+      evc.code,
+      evc.expires_at,
+      evc.created_at,
+      u.id as user_id,
+      u.name as user_name
+    FROM email_verification_codes evc
+    LEFT JOIN users u ON evc.email = u.email
+    ORDER BY evc.created_at DESC`
+  );
+  
+  return rows;
+};

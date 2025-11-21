@@ -5,8 +5,8 @@ import {
   verifyCode,
   deleteVerificationCode,
 } from '../models/verification.model.js';
-import { sendVerificationEmail } from '../services/email.service.js';
 import { findUserByEmail, updateUserEmailVerified } from '../models/user.model.js';
+import { sendVerificationCodeEmail } from '../services/email.service.js';
 
 // Send verification code
 export const sendVerificationCode = async (req: Request, res: Response) => {
@@ -26,19 +26,24 @@ export const sendVerificationCode = async (req: Request, res: Response) => {
     // Save to database (expires in 15 minutes)
     await createVerificationCode(email, code, 15);
 
-    // Send email
-    const emailSent = await sendVerificationEmail(email, name, code);
+    // Send verification code email
+    console.log(`📧 Sending verification code to ${email}...`);
+    const emailSent = await sendVerificationCodeEmail({
+      to: email,
+      name: name,
+      code: code,
+    });
 
     if (!emailSent) {
-      return res.status(500).json({
-        success: false,
-        message: 'Failed to send verification email',
-      });
+      console.warn(`⚠️ Failed to send verification email to ${email}, but code was saved`);
+      // Still return success since code was saved to database
+    } else {
+      console.log(`✅ Verification email successfully sent to ${email}`);
     }
 
     return res.status(200).json({
       success: true,
-      message: 'Verification code sent successfully',
+      message: 'Verification code sent to your email',
     });
   } catch (error) {
     console.error('Error sending verification code:', error);
@@ -128,19 +133,12 @@ export const resendVerificationCode = async (req: Request, res: Response) => {
     // Save to database
     await createVerificationCode(email, code, 15);
 
-    // Send email
-    const emailSent = await sendVerificationEmail(email, user.name, code);
-
-    if (!emailSent) {
-      return res.status(500).json({
-        success: false,
-        message: 'Failed to send verification email',
-      });
-    }
+    // Note: Email sending removed - implement via frontend email service if needed
 
     return res.status(200).json({
       success: true,
-      message: 'Verification code resent successfully',
+      message: 'Verification code generated successfully',
+      code, // In production, don't return code - only for development
     });
   } catch (error) {
     console.error('Error resending verification code:', error);
@@ -150,3 +148,6 @@ export const resendVerificationCode = async (req: Request, res: Response) => {
     });
   }
 };
+
+// Admin functions removed - verification is now automatic after email code verification
+// Users verify via code entry, no manual admin approval needed

@@ -20,7 +20,7 @@ export default function Home() {
 
   return (
     <div className="flex flex-col">
-      <section className="relative w-full h-[60vh] md:h-[80vh]">
+      <section className="relative w-full h-screen">
         {heroImage && (
           <Image
             src="/assets/main.png"
@@ -30,21 +30,22 @@ export default function Home() {
             priority
           />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-background to-black/50" />
-        <div className="relative z-10 flex flex-col items-center justify-center h-full text-center text-primary-foreground px-4">
-          <h1 className="text-4xl md:text-6xl font-bold font-headline tracking-tight">
-            Welcome to Elimar Spring Garden
-          </h1>
-          <p className="mt-4 max-w-2xl text-lg md:text-xl italic">
-            Discover a sanctuary of peace and tranquility nestled in the heart of nature. Your perfect escape awaits.
-          </p>
-          <Button asChild size="lg" className="mt-8">
-            {isLoggedIn ? (
-              <Link href="/client/booking">View Your Bookings</Link>
-            ) : (
-              <Link href="/signup">Book Your Stay</Link>
-            )}
+        <div className="absolute inset-0 bg-black/20" />
+        <div className="relative z-10 flex flex-col items-center justify-center h-full text-white px-4">
+          <div className="flex flex-col items-start">
+            <p className="text-xl md:text-2xl mb-2 font-bold">Welcome to</p>
+            <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold font-headline tracking-tight uppercase text-yellow-400">
+              ELIMAR SPRING GARDEN
+            </h1>
+          </div>
+          <Button asChild size="lg" className="mt-12 bg-blue-500 hover:bg-blue-600 text-white px-12 py-6 text-xl rounded-full">
+            <Link href="/signup">Book Now</Link>
           </Button>
+        </div>
+        <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 animate-bounce">
+          <div className="w-8 h-12 border-2 border-white rounded-full flex items-start justify-center p-2">
+            <div className="w-1.5 h-3 bg-white rounded-full"></div>
+          </div>
         </div>
       </section>
 

@@ -51,6 +51,8 @@ interface Booking {
   adults?: number;
   kids?: number;
   pwd?: number;
+  senior?: number;
+  guest_names?: string;
   overnight_stay?: boolean;
   overnight_swimming?: boolean;
   total_price: number;
@@ -64,7 +66,7 @@ interface Booking {
   accommodation_type?: string;
   accommodation_capacity?: string;
   // Event booking specific fields
-  booking_type?: 'regular' | 'event';
+  booking_type?: 'regular' | 'event' | 'walk-in';
   event_type?: 'whole_day' | 'evening' | 'morning';
   booking_date?: string;
   event_details?: string;
@@ -106,7 +108,7 @@ export default function BookingsPage() {
             'Authorization': `Bearer ${token}`,
           },
         }),
-        fetch(`${API_URL}/api/event-bookings`, {
+        fetch(`${API_URL}/api/event_bookings`, {
           headers: {
             'Authorization': `Bearer ${token}`,
           },
@@ -152,7 +154,7 @@ export default function BookingsPage() {
       const token = localStorage.getItem('token');
       const isEventBooking = booking.booking_type === 'event';
       const endpoint = isEventBooking 
-        ? `${API_URL}/api/event-bookings/${booking.id}`
+        ? `${API_URL}/api/event_bookings/${booking.id}`
         : `${API_URL}/api/bookings/${booking.id}`;
       
       const response = await fetch(endpoint, {
@@ -192,7 +194,7 @@ export default function BookingsPage() {
       const token = localStorage.getItem('token');
       const isEventBooking = booking.booking_type === 'event';
       const endpoint = isEventBooking
-        ? `${API_URL}/api/event-bookings/${booking.id}/approve`
+        ? `${API_URL}/api/event_bookings/${booking.id}/approve`
         : `${API_URL}/api/bookings/${booking.id}/approve`;
       
       const response = await fetch(endpoint, {
@@ -232,7 +234,7 @@ export default function BookingsPage() {
       const token = localStorage.getItem('token');
       const isEventBooking = booking.booking_type === 'event';
       const endpoint = isEventBooking
-        ? `${API_URL}/api/event-bookings/${booking.id}/reject`
+        ? `${API_URL}/api/event_bookings/${booking.id}/reject`
         : `${API_URL}/api/bookings/${booking.id}/reject`;
       
       const response = await fetch(endpoint, {
@@ -272,7 +274,7 @@ export default function BookingsPage() {
       const token = localStorage.getItem('token');
       const isEventBooking = booking.booking_type === 'event';
       const endpoint = isEventBooking
-        ? `${API_URL}/api/event-bookings/${booking.id}/checkout`
+        ? `${API_URL}/api/event_bookings/${booking.id}/checkout`
         : `${API_URL}/api/bookings/${booking.id}/checkout`;
       
       const response = await fetch(endpoint, {
@@ -316,7 +318,7 @@ export default function BookingsPage() {
       const token = localStorage.getItem('token');
       const isEventBooking = booking.booking_type === 'event';
       const endpoint = isEventBooking
-        ? `${API_URL}/api/event-bookings/${booking.id}`
+        ? `${API_URL}/api/event_bookings/${booking.id}`
         : `${API_URL}/api/bookings/${booking.id}`;
       
       const response = await fetch(endpoint, {
@@ -421,7 +423,7 @@ export default function BookingsPage() {
   }
 
   const renderBookingRow = (booking: Booking, showCheckout: boolean = false) => (
-    <TableRow key={booking.id} className="hover:bg-muted/50">
+    <TableRow key={`${booking.booking_type || 'regular'}-${booking.id}`} className="hover:bg-muted/50">
       <TableCell>
         <div className="flex items-center gap-2">
           <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
@@ -907,7 +909,7 @@ export default function BookingsPage() {
                     <Users className="w-5 h-5 text-primary" />
                     Guest Information
                   </h3>
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-4 gap-4">
                     <div>
                       <p className="text-sm text-muted-foreground">Adults</p>
                       <p className="font-medium text-lg">{selectedBooking.adults || 0}</p>
@@ -917,10 +919,36 @@ export default function BookingsPage() {
                       <p className="font-medium text-lg">{selectedBooking.kids || 0}</p>
                     </div>
                     <div>
-                      <p className="text-sm text-muted-foreground">PWD/Senior</p>
+                      <p className="text-sm text-muted-foreground">PWD</p>
                       <p className="font-medium text-lg">{selectedBooking.pwd || 0}</p>
                     </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Senior</p>
+                      <p className="font-medium text-lg">{selectedBooking.senior || 0}</p>
+                    </div>
                   </div>
+                  {selectedBooking.guest_names && (() => {
+                    try {
+                      const guests = JSON.parse(selectedBooking.guest_names);
+                      return (
+                        <div className="mt-4 pt-4 border-t">
+                          <p className="text-sm font-medium text-muted-foreground mb-3">Guest Names</p>
+                          <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto">
+                            {guests.map((guest: any, idx: number) => (
+                              <div key={idx} className="flex items-center gap-2 text-sm p-2 bg-muted/50 rounded">
+                                <span className="font-medium">{guest.name}</span>
+                                <Badge variant="outline" className="text-xs">
+                                  {guest.type.toUpperCase()}
+                                </Badge>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    } catch (e) {
+                      return null;
+                    }
+                  })()}
                   <div className="mt-4 pt-4 border-t">
                     <p className="text-sm text-muted-foreground mb-2">Additional Options</p>
                     <div className="flex flex-wrap gap-2">

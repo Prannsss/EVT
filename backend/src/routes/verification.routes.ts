@@ -16,4 +16,7 @@ router.post('/verify', verifyEmailCode);
 // POST /api/verification/resend - Resend verification code
 router.post('/resend', resendVerificationCode);
 
+// Admin routes removed - verification now automatic after email code verification
+// No longer need manual approval/rejection by admin
+
 export default router;

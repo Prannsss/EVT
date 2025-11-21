@@ -10,7 +10,7 @@ import {
 } from '../models/booking.model.js';
 import { getAccommodationById } from '../models/accommodation.model.js';
 import { findUserById } from '../models/user.model.js';
-import { sendBookingConfirmation, sendBookingStatusUpdate } from '../services/email.service.js';
+import { sendBookingConfirmation, sendBookingNotificationEmail, sendCheckOutThankYouEmail } from '../services/email.service.js';
 import { checkRegularBookingAvailability } from '../services/availability.service.js';
 import { successResponse, errorResponse } from '../utils/response.js';
 
@@ -62,6 +62,11 @@ export const addBooking = async (req: Request, res: Response) => {
       adults,
       kids,
       pwd,
+      senior,
+      adult_swimming,
+      kid_swimming,
+      pwd_swimming,
+      senior_swimming,
       overnight_stay,
       overnight_swimming,
       total_price,
@@ -118,6 +123,11 @@ export const addBooking = async (req: Request, res: Response) => {
       adults: parseInt(adults) || 0,
       kids: parseInt(kids) || 0,
       pwd: parseInt(pwd) || 0,
+      senior: parseInt(senior) || 0,
+      adult_swimming: parseInt(adult_swimming) || 0,
+      kid_swimming: parseInt(kid_swimming) || 0,
+      pwd_swimming: parseInt(pwd_swimming) || 0,
+      senior_swimming: parseInt(senior_swimming) || 0,
       overnight_stay: overnight_stay === 'true' || overnight_stay === true,
       overnight_swimming: overnight_swimming === 'true' || overnight_swimming === true,
       total_price: parseFloat(total_price),
@@ -151,7 +161,7 @@ export const addBooking = async (req: Request, res: Response) => {
 export const modifyBooking = async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id);
-    const { status } = req.body;
+    const { status, guest_names } = req.body;
 
     // Get uploaded file path if exists
     const file = req.file as Express.Multer.File | undefined;
@@ -174,6 +184,7 @@ export const modifyBooking = async (req: Request, res: Response) => {
     const updateData: any = {};
     if (status) updateData.status = status;
     if (proof_of_payment_url) updateData.proof_of_payment_url = proof_of_payment_url;
+    if (guest_names !== undefined) updateData.guest_names = guest_names;
 
     const success = await updateBooking(id, updateData);
 
@@ -181,11 +192,20 @@ export const modifyBooking = async (req: Request, res: Response) => {
       return res.status(400).json(errorResponse('Update failed', 400));
     }
 
-    // Send status update email if status changed
-    if (status) {
+    // Send notification email if status changed to approved/rejected
+    if (status && (status === 'approved' || status === 'cancelled')) {
       const user = await findUserById(booking.user_id);
-      if (user) {
-        await sendBookingStatusUpdate(user.email, user.name, id, status);
+      const accommodation = await getAccommodationById(booking.accommodation_id);
+      if (user && accommodation) {
+        await sendBookingNotificationEmail({
+          to: user.email,
+          clientName: user.name,
+          status: status === 'approved' ? 'approved' : 'rejected',
+          bookingId: id,
+          accommodation: accommodation.name,
+          checkIn: booking.check_in_date,
+          checkOut: booking.check_out_date || undefined,
+        });
       }
     }
 
@@ -260,10 +280,19 @@ export const approveBooking = async (req: Request, res: Response) => {
       return res.status(400).json(errorResponse('Approval failed', 400));
     }
 
-    // Send status update email
+    // Send approval notification email
     const user = await findUserById(booking.user_id);
-    if (user) {
-      await sendBookingStatusUpdate(user.email, user.name, id, 'approved');
+    const accommodation = await getAccommodationById(booking.accommodation_id);
+    if (user && accommodation) {
+      await sendBookingNotificationEmail({
+        to: user.email,
+        clientName: user.name,
+        status: 'approved',
+        bookingId: id,
+        accommodation: accommodation.name,
+        checkIn: booking.check_in_date,
+        checkOut: booking.check_out_date || undefined,
+      });
     }
 
     res.json(successResponse(null, 'Booking approved successfully'));
@@ -293,10 +322,19 @@ export const rejectBooking = async (req: Request, res: Response) => {
       return res.status(400).json(errorResponse('Rejection failed', 400));
     }
 
-    // Send status update email
+    // Send rejection notification email
     const user = await findUserById(booking.user_id);
-    if (user) {
-      await sendBookingStatusUpdate(user.email, user.name, id, 'rejected');
+    const accommodation = await getAccommodationById(booking.accommodation_id);
+    if (user && accommodation) {
+      await sendBookingNotificationEmail({
+        to: user.email,
+        clientName: user.name,
+        status: 'rejected',
+        bookingId: id,
+        accommodation: accommodation.name,
+        checkIn: booking.check_in_date,
+        checkOut: booking.check_out_date || undefined,
+      });
     }
 
     res.json(successResponse(null, 'Booking rejected successfully'));
@@ -330,10 +368,22 @@ export const checkOutBooking = async (req: Request, res: Response) => {
       ['completed', id]
     );
 
-    // Send status update email
+    // Get updated booking with accommodation details
+    const updatedBooking = await getBookingById(id);
+    
+    // Send thank you email
     const user = await findUserById(booking.user_id);
-    if (user) {
-      await sendBookingStatusUpdate(user.email, user.name, id, 'completed');
+    if (user && updatedBooking) {
+      await sendCheckOutThankYouEmail({
+        clientEmail: user.email,
+        clientName: user.name,
+        bookingDetails: {
+          accommodationName: updatedBooking.accommodation_name,
+          checkInDate: updatedBooking.check_in_date,
+          checkOutDate: updatedBooking.check_out_date || new Date().toISOString().split('T')[0],
+          amountPaid: updatedBooking.total_price,
+        },
+      });
     }
 
     res.json(successResponse(null, 'Guest checked out successfully'));

@@ -20,7 +20,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "./ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select"
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover"
 import { Calendar as CalendarComponent } from "./ui/calendar"
-import { Plus, Minus, Clock, Calendar, Loader2, AlertCircle, Info } from "lucide-react"
+import { Plus, Minus, Clock, Calendar, Loader2, AlertCircle, Info, Droplet } from "lucide-react"
 import Accommodation3D from "./Accommodation3D"
 import { API_URL } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -48,11 +48,15 @@ interface BookingModalProps {
 interface DynamicPricing {
   entrance: {
     adult: number;
-    kids_senior_pwd: number;
+    kids: number;
+    pwd: number;
+    senior: number;
   };
   swimming: {
     adult: number;
-    kids_senior_pwd: number;
+    kids: number;
+    pwd: number;
+    senior: number;
   };
   night_swimming: {
     per_head: number;
@@ -67,9 +71,11 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
   const [adultCount, setAdultCount] = useState(0)
   const [kidCount, setKidCount] = useState(0)
   const [pwdCount, setPwdCount] = useState(0)
+  const [seniorCount, setSeniorCount] = useState(0)
   const [adultSwimming, setAdultSwimming] = useState(0)
   const [kidSwimming, setKidSwimming] = useState(0)
   const [pwdSwimming, setPwdSwimming] = useState(0)
+  const [seniorSwimming, setSeniorSwimming] = useState(0)
   const [overnightStay, setOvernightStay] = useState(false)
   const [overnightSwimming, setOvernightSwimming] = useState(false)
   const [proofOfPayment, setProofOfPayment] = useState<File | null>(null)
@@ -107,16 +113,16 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
 
         // Convert array to grouped object
         const grouped: DynamicPricing = {
-          entrance: { adult: 70, kids_senior_pwd: 50 },
-          swimming: { adult: 80, kids_senior_pwd: 50 },
+          entrance: { adult: 70, kids: 50, pwd: 50, senior: 50 },
+          swimming: { adult: 80, kids: 50, pwd: 50, senior: 50 },
           night_swimming: { per_head: 200 },
         }
 
         settings.forEach((setting: any) => {
           if (setting.category === 'entrance') {
-            grouped.entrance[setting.type as 'adult' | 'kids_senior_pwd'] = Number(setting.price)
+            grouped.entrance[setting.type as 'adult' | 'kids' | 'pwd' | 'senior'] = Number(setting.price)
           } else if (setting.category === 'swimming') {
-            grouped.swimming[setting.type as 'adult' | 'kids_senior_pwd'] = Number(setting.price)
+            grouped.swimming[setting.type as 'adult' | 'kids' | 'pwd' | 'senior'] = Number(setting.price)
           } else if (setting.category === 'night_swimming') {
             grouped.night_swimming.per_head = Number(setting.price)
           }
@@ -127,8 +133,8 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
         console.error('Error fetching pricing:', error)
         // Use default values on error
         setPricing({
-          entrance: { adult: 70, kids_senior_pwd: 50 },
-          swimming: { adult: 80, kids_senior_pwd: 50 },
+          entrance: { adult: 70, kids: 50, pwd: 50, senior: 50 },
+          swimming: { adult: 80, kids: 50, pwd: 50, senior: 50 },
           night_swimming: { per_head: 200 },
         })
       } finally {
@@ -280,19 +286,23 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
 
     // Add entrance fees only
     total += adultCount * pricing.entrance.adult
-    total += (kidCount + pwdCount) * pricing.entrance.kids_senior_pwd
+    total += kidCount * pricing.entrance.kids
+    total += pwdCount * pricing.entrance.pwd
+    total += seniorCount * pricing.entrance.senior
 
     // Add swimming fees based on checkboxes
     total += adultSwimming * pricing.swimming.adult
-    total += (kidSwimming + pwdSwimming) * pricing.swimming.kids_senior_pwd
+    total += kidSwimming * pricing.swimming.kids
+    total += pwdSwimming * pricing.swimming.pwd
+    total += seniorSwimming * pricing.swimming.senior
 
     // Add overnight swimming fee
     if (overnightSwimming) {
-      total += (adultCount + kidCount + pwdCount) * pricing.night_swimming.per_head
+      total += (adultCount + kidCount + pwdCount + seniorCount) * pricing.night_swimming.per_head
     }
 
     return total
-  }, [accommodation, pricing, adultCount, kidCount, pwdCount, adultSwimming, kidSwimming, pwdSwimming, overnightSwimming])
+  }, [accommodation, pricing, adultCount, kidCount, pwdCount, seniorCount, adultSwimming, kidSwimming, pwdSwimming, seniorSwimming, overnightSwimming])
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -323,6 +333,7 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
           adults: adultCount,
           kids: kidCount,
           pwd: pwdCount,
+          senior: seniorCount,
           overnightStay,
           overnightSwimming,
           bookingTime,
@@ -351,7 +362,7 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
         return
       }
 
-      if (adultCount + kidCount + pwdCount === 0) {
+      if (adultCount + kidCount + pwdCount + seniorCount === 0) {
         toast({
           title: "Missing Information",
           description: "Please add at least one guest",
@@ -384,6 +395,11 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
       formData.append('adults', adultCount.toString())
       formData.append('kids', kidCount.toString())
       formData.append('pwd', pwdCount.toString())
+      formData.append('senior', seniorCount.toString())
+      formData.append('adult_swimming', adultSwimming.toString())
+      formData.append('kid_swimming', kidSwimming.toString())
+      formData.append('pwd_swimming', pwdSwimming.toString())
+      formData.append('senior_swimming', seniorSwimming.toString())
       formData.append('overnight_stay', overnightStay.toString())
       formData.append('overnight_swimming', overnightSwimming.toString())
       formData.append('total_price', totalPrice.toString())
@@ -428,9 +444,11 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
     setAdultCount(0)
     setKidCount(0)
     setPwdCount(0)
+    setSeniorCount(0)
     setAdultSwimming(0)
     setKidSwimming(0)
     setPwdSwimming(0)
+    setSeniorSwimming(0)
     setOvernightStay(false)
     setOvernightSwimming(false)
     setProofOfPayment(null)
@@ -616,7 +634,7 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
           {/* Guest Count Controls */}
           <div className="mb-6">
             <h4 className="text-lg font-bold mb-4 flex items-center gap-2">Number of Guests</h4>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {/* Adults */}
               <div className="flex items-center justify-between p-4 border-2 rounded-lg shadow-sm bg-card hover:border-primary/50 transition-colors">
                 <div>
@@ -670,7 +688,7 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
               {/* PWD */}
               <div className="flex items-center justify-between p-4 border rounded-lg">
                 <div>
-                  <Label className="text-sm font-medium">PWD/Senior</Label>
+                  <Label className="text-sm font-medium">PWD</Label>
                   <p className="text-xs text-muted-foreground">With ID</p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -691,20 +709,45 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
                   </Button>
                 </div>
               </div>
+
+              {/* Senior */}
+              <div className="flex items-center justify-between p-4 border rounded-lg">
+                <div>
+                  <Label className="text-sm font-medium">Senior</Label>
+                  <p className="text-xs text-muted-foreground">With ID</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="icon" 
+                    onClick={() => setSeniorCount(Math.max(0, seniorCount - 1))}
+                  >
+                    <Minus className="h-4 w-4" />
+                  </Button>
+                  <span className="w-8 text-center font-medium">{seniorCount}</span>
+                  <Button 
+                    variant="outline" 
+                    size="icon" 
+                    onClick={() => setSeniorCount(seniorCount + 1)}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
             </div>
           </div>
 
           {/* Swimming Fee Checkboxes */}
-          {(adultCount > 0 || kidCount > 0 || pwdCount > 0) && (
+          {(adultCount > 0 || kidCount > 0 || pwdCount > 0 || seniorCount > 0) && (
             <div className="mb-6">
               <h4 className="text-lg font-bold mb-4 flex items-center gap-2">
-                <span>🏊</span>
+                <Droplet className="h-5 w-5 text-blue-500" />
                 Swimming Add-ons
               </h4>
               <p className="text-sm text-muted-foreground mb-4">
-                Select which guests will be swimming (₱{pricing?.swimming.adult} per adult, ₱{pricing?.swimming.kids_senior_pwd} per kid/senior/PWD)
+                Select which guests will be swimming (₱{pricing?.swimming.adult} per adult, ₱{pricing?.swimming.kids} per kid, ₱{pricing?.swimming.pwd} per PWD, ₱{pricing?.swimming.senior} per senior)
               </p>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {/* Adult Swimming */}
                 {adultCount > 0 && (
                   <div className="p-4 border rounded-lg bg-muted/30">
@@ -746,7 +789,7 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
                   <div className="p-4 border rounded-lg bg-muted/30">
                     <div className="flex items-center justify-between mb-2">
                       <Label className="text-sm font-semibold">Kid Swimming</Label>
-                      <span className="text-xs text-muted-foreground">₱{pricing?.swimming.kids_senior_pwd} each</span>
+                      <span className="text-xs text-muted-foreground">₱{pricing?.swimming.kids} each</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Button 
@@ -772,7 +815,7 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
                       </Button>
                     </div>
                     <p className="text-xs text-muted-foreground mt-2">
-                      Subtotal: ₱{(kidSwimming * (pricing?.swimming.kids_senior_pwd || 0)).toLocaleString()}
+                      Subtotal: ₱{(kidSwimming * (pricing?.swimming.kids || 0)).toLocaleString()}
                     </p>
                   </div>
                 )}
@@ -781,8 +824,8 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
                 {pwdCount > 0 && (
                   <div className="p-4 border rounded-lg bg-muted/30">
                     <div className="flex items-center justify-between mb-2">
-                      <Label className="text-sm font-semibold">PWD/Senior Swimming</Label>
-                      <span className="text-xs text-muted-foreground">₱{pricing?.swimming.kids_senior_pwd} each</span>
+                      <Label className="text-sm font-semibold">PWD Swimming</Label>
+                      <span className="text-xs text-muted-foreground">₱{pricing?.swimming.pwd} each</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Button 
@@ -808,7 +851,43 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
                       </Button>
                     </div>
                     <p className="text-xs text-muted-foreground mt-2">
-                      Subtotal: ₱{(pwdSwimming * (pricing?.swimming.kids_senior_pwd || 0)).toLocaleString()}
+                      Subtotal: ₱{(pwdSwimming * (pricing?.swimming.pwd || 0)).toLocaleString()}
+                    </p>
+                  </div>
+                )}
+
+                {/* Senior Swimming */}
+                {seniorCount > 0 && (
+                  <div className="p-4 border rounded-lg bg-muted/30">
+                    <div className="flex items-center justify-between mb-2">
+                      <Label className="text-sm font-semibold">Senior Swimming</Label>
+                      <span className="text-xs text-muted-foreground">₱{pricing?.swimming.senior} each</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => setSeniorSwimming(Math.max(0, seniorSwimming - 1))}
+                        disabled={seniorSwimming === 0}
+                      >
+                        <Minus className="h-3 w-3" />
+                      </Button>
+                      <span className="w-16 text-center font-medium">
+                        {seniorSwimming} / {seniorCount}
+                      </span>
+                      <Button 
+                        variant="outline" 
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => setSeniorSwimming(Math.min(seniorCount, seniorSwimming + 1))}
+                        disabled={seniorSwimming >= seniorCount}
+                      >
+                        <Plus className="h-3 w-3" />
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Subtotal: ₱{(seniorSwimming * (pricing?.swimming.senior || 0)).toLocaleString()}
                     </p>
                   </div>
                 )}
@@ -957,16 +1036,25 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
                 <div className="flex justify-between text-sm">
                   <span>Kids ({kidCount}) - Entrance Fee</span>
                   <span className="font-medium">
-                    ₱{(kidCount * pricing.entrance.kids_senior_pwd).toFixed(2)}
+                    ₱{(kidCount * pricing.entrance.kids).toFixed(2)}
                   </span>
                 </div>
               )}
               
               {pwdCount > 0 && (
                 <div className="flex justify-between text-sm">
-                  <span>PWD/Senior ({pwdCount}) - Entrance Fee</span>
+                  <span>PWD ({pwdCount}) - Entrance Fee</span>
                   <span className="font-medium">
-                    ₱{(pwdCount * pricing.entrance.kids_senior_pwd).toFixed(2)}
+                    ₱{(pwdCount * pricing.entrance.pwd).toFixed(2)}
+                  </span>
+                </div>
+              )}
+              
+              {seniorCount > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span>Senior ({seniorCount}) - Entrance Fee</span>
+                  <span className="font-medium">
+                    ₱{(seniorCount * pricing.entrance.senior).toFixed(2)}
                   </span>
                 </div>
               )}
@@ -984,25 +1072,34 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
                 <div className="flex justify-between text-sm">
                   <span>Kids ({kidSwimming}) - Swimming Fee</span>
                   <span className="font-medium">
-                    ₱{(kidSwimming * pricing.swimming.kids_senior_pwd).toFixed(2)}
+                    ₱{(kidSwimming * pricing.swimming.kids).toFixed(2)}
                   </span>
                 </div>
               )}
 
               {pwdSwimming > 0 && (
                 <div className="flex justify-between text-sm">
-                  <span>PWD/Senior ({pwdSwimming}) - Swimming Fee</span>
+                  <span>PWD ({pwdSwimming}) - Swimming Fee</span>
                   <span className="font-medium">
-                    ₱{(pwdSwimming * pricing.swimming.kids_senior_pwd).toFixed(2)}
+                    ₱{(pwdSwimming * pricing.swimming.pwd).toFixed(2)}
+                  </span>
+                </div>
+              )}
+
+              {seniorSwimming > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span>Senior ({seniorSwimming}) - Swimming Fee</span>
+                  <span className="font-medium">
+                    ₱{(seniorSwimming * pricing.swimming.senior).toFixed(2)}
                   </span>
                 </div>
               )}
               
               {overnightSwimming && (
                 <div className="flex justify-between text-sm">
-                  <span>Night Swimming ({adultCount + kidCount + pwdCount} guests)</span>
+                  <span>Night Swimming ({adultCount + kidCount + pwdCount + seniorCount} guests)</span>
                   <span className="font-medium">
-                    ₱{((adultCount + kidCount + pwdCount) * pricing.night_swimming.per_head).toFixed(2)}
+                    ₱{((adultCount + kidCount + pwdCount + seniorCount) * pricing.night_swimming.per_head).toFixed(2)}
                   </span>
                 </div>
               )}
