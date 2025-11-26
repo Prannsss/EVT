@@ -3,12 +3,14 @@
 import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Button } from '../../components/ui/button';
-import { Input } from '../../components/ui/input';
-import { Label } from '../../components/ui/label';
-import { Loader2, CheckCircle } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Loader2, CheckCircle, Turtle } from 'lucide-react';
 import { API_URL } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import AuthCarousel from '@/components/AuthCarousel';
 
 function LoginForm() {
   const router = useRouter();
@@ -18,6 +20,7 @@ function LoginForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [showVerifiedMessage, setShowVerifiedMessage] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -101,12 +104,16 @@ function LoginForm() {
 
   return (
     <div className="w-full h-screen lg:grid lg:grid-cols-2">
-      <div className="flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 h-full">
+      <div className="flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 h-full bg-background">
         <div className="mx-auto grid w-[400px] gap-6">
           <div className="grid gap-2">
-            <h1 className="text-3xl font-bold">Login</h1>
+            <Link href="/" className="flex items-center gap-2 mb-2 hover:opacity-80 transition-opacity w-fit">
+              <Turtle className="h-6 w-6 text-primary" />
+              <span className="font-semibold text-primary">Elimar Spring Garden Resort</span>
+            </Link>
+            <h1 className="text-3xl font-bold">Holla, Welcome Back</h1>
             <p className="text-balance text-muted-foreground">
-              Enter your email below to login to your account
+              Hey, welcome back to your special place
             </p>
           </div>
 
@@ -126,11 +133,12 @@ function LoginForm() {
               <Input
                 id="email"
                 type="email"
-                placeholder="Email"
+                placeholder="Enter your email"
                 required
                 value={formData.email}
                 onChange={handleInputChange}
                 disabled={isLoading}
+                className="h-11"
               />
             </div>
             <div className="grid gap-2">
@@ -138,12 +146,13 @@ function LoginForm() {
                 <div className="relative">
                   <Input 
                     id="password" 
-                    placeholder="Password" 
+                    placeholder="Enter your password" 
                     type={showPassword ? 'text' : 'password'} 
                     required 
                     value={formData.password}
                     onChange={handleInputChange}
                     disabled={isLoading}
+                    className="h-11 pr-10"
                   />
                   <button
                     type="button"
@@ -166,43 +175,53 @@ function LoginForm() {
                 </div>
             </div>
 
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Checkbox 
+                  id="remember" 
+                  checked={rememberMe}
+                  onCheckedChange={(checked) => setRememberMe(checked as boolean)}
+                />
+                <label
+                  htmlFor="remember"
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  Remember me
+                </label>
+              </div>
+              <Link href="#" className="text-sm font-medium text-primary hover:underline">
+                Forgot Password?
+              </Link>
+            </div>
+
             {error && (
               <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-md">
                 {error}
               </div>
             )}
 
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            <Button type="submit" className="w-full h-11 text-base" disabled={isLoading}>
               {isLoading ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   Logging in...
                 </>
               ) : (
-                'Login'
+                'Sign In'
               )}
             </Button>
           </form>
           <div className="mt-4 text-center text-sm">
             Don&apos;t have an account?{' '}
-            <Link href="/signup" className="underline">
-              Sign up
+            <Link href="/signup" className="font-bold text-primary hover:underline">
+              Sign Up
             </Link>
           </div>
         </div>
       </div>
-      <div className="hidden bg-muted lg:flex items-center justify-center relative flex-col text-center grid-pattern">
-         <Link href="/" className="absolute top-8 left-8 text-lg font-medium">
-          Elimar Spring Garden
-        </Link>
-        <div className="text-4xl font-bold font-headline tracking-tight">
-          Welcome Back
-        </div>
-        <p className="mt-2 text-lg text-muted-foreground">
-          Your serene escape is just a login away.
-        </p>
-        <div className="absolute bottom-8 text-sm text-muted-foreground">
-           &copy; {new Date().getFullYear()} Elimar Spring Garden. All rights reserved.
+      <div className="hidden lg:block h-full w-full p-4">
+        <div className="h-full w-full rounded-[32px] overflow-hidden">
+            <AuthCarousel />
         </div>
       </div>
     </div>

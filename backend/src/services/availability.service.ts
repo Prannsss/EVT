@@ -48,7 +48,7 @@ export const checkEventConflictsForDate = async (
     SELECT id, event_type, booking_date 
     FROM event_bookings 
     WHERE booking_date = ? 
-    AND status IN ('pending', 'approved')
+    AND status = 'approved'
   `;
   
   const params: any[] = [date];
@@ -136,24 +136,37 @@ export const checkRegularBookingAvailability = async (
   }
   
   // Check for regular booking conflicts
+  // Calculate effective end date for the new booking
+  // If checkout is null or same as check-in, effective end is check-in + 1 day
+  const checkIn = new Date(checkInDate);
+  const checkOut = checkOutDate ? new Date(checkOutDate) : new Date(checkInDate);
+  
+  // If checkOut <= checkIn, it's a single day booking, so effective end is next day
+  if (checkOut.getTime() <= checkIn.getTime()) {
+    checkOut.setUTCDate(checkOut.getUTCDate() + 1);
+  }
+  
+  const newEffectiveEnd = checkOut.toISOString().split('T')[0];
+  
   let query = `
     SELECT COUNT(*) as count, GROUP_CONCAT(id) as booking_ids
     FROM bookings 
     WHERE accommodation_id = ? 
-    AND status IN ('pending', 'approved')
+    AND status = 'approved'
     AND (
-      (check_in_date <= ? AND (check_out_date >= ? OR check_out_date IS NULL))
-      OR (? <= check_in_date AND (check_out_date IS NULL OR check_in_date <= ?))
+      -- Check for date range overlaps using exclusive end dates
+      -- Existing Start < New End AND Existing End > New Start
+      check_in_date < ? 
+      AND (
+        CASE 
+          WHEN check_out_date > check_in_date THEN check_out_date 
+          ELSE DATE_ADD(check_in_date, INTERVAL 1 DAY) 
+        END
+      ) > ?
     )
   `;
   
-  const params: any[] = [
-    accommodationId, 
-    checkInDate, 
-    checkInDate, 
-    checkInDate, 
-    checkOutDate || checkInDate
-  ];
+  const params: any[] = [accommodationId, newEffectiveEnd, checkInDate];
   
   if (excludeBookingId) {
     query += ' AND id != ?';
@@ -239,12 +252,18 @@ export const checkEventBookingAvailability = async (
   const [regularBookings] = await pool.query<RowDataPacket[]>(
     `SELECT id, accommodation_id, check_in_date, check_out_date
      FROM bookings
-     WHERE status IN ('pending', 'approved')
+     WHERE status = 'approved'
      AND (
-       check_in_date = ? 
-       OR (check_in_date <= ? AND (check_out_date >= ? OR check_out_date IS NULL))
+       -- Check if the event date falls within the booking dates
+       check_in_date < DATE_ADD(?, INTERVAL 1 DAY)
+       AND (
+         CASE 
+           WHEN check_out_date > check_in_date THEN check_out_date 
+           ELSE DATE_ADD(check_in_date, INTERVAL 1 DAY) 
+         END
+       ) > ?
      )`,
-    [bookingDate, bookingDate, bookingDate]
+    [bookingDate, bookingDate]
   );
   
   if (regularBookings.length > 0) {
@@ -291,7 +310,7 @@ export const getUnavailableDates = async (
   let eventQuery = `
     SELECT booking_date, event_type
     FROM event_bookings
-    WHERE status IN ('pending', 'approved')
+    WHERE status = 'approved'
   `;
   
   const eventParams: any[] = [];
@@ -340,28 +359,61 @@ export const getUnavailableDates = async (
   // If accommodation is specified, also check regular bookings
   if (accommodationId) {
     let bookingQuery = `
-      SELECT DISTINCT DATE(check_in_date) as booking_date
+      SELECT check_in_date, check_out_date
       FROM bookings
       WHERE accommodation_id = ?
-      AND status IN ('pending', 'approved')
+      AND status = 'approved'
     `;
     
     const bookingParams: any[] = [accommodationId];
     
     if (startDate && endDate) {
-      bookingQuery += ' AND check_in_date BETWEEN ? AND ?';
-      bookingParams.push(startDate, endDate);
+      // Find bookings that overlap with the requested range [startDate, endDate]
+      // Overlap condition: BookingStart <= RangeEnd AND BookingEnd > RangeStart
+      // Note: BookingEnd is exclusive (check_out_date or check_in_date + 1)
+      bookingQuery += ` AND (
+        check_in_date <= ? 
+        AND (
+          CASE 
+            WHEN check_out_date > check_in_date THEN check_out_date 
+            ELSE DATE_ADD(check_in_date, INTERVAL 1 DAY) 
+          END
+        ) > ?
+      )`;
+      // We want to find bookings that overlap with the range [startDate, endDate]
+      // So we check if booking starts before or on endDate, and ends after startDate
+      bookingParams.push(endDate, startDate);
     }
     
     const [bookingRows] = await pool.query<RowDataPacket[]>(bookingQuery, bookingParams);
     const bookings = bookingRows as any[];
     
     bookings.forEach(booking => {
-      const dateStr = booking.booking_date.toISOString().split('T')[0];
-      // Only add if not already marked as unavailable due to event
-      if (!unavailableDates.includes(dateStr) && 
-          !partiallyAvailable.some(p => p.date === dateStr)) {
-        unavailableDates.push(dateStr);
+      // Calculate effective end date
+      const checkIn = new Date(booking.check_in_date);
+      const checkOut = booking.check_out_date 
+        ? new Date(booking.check_out_date) 
+        : new Date(checkIn);
+      
+      // If single day booking, end date is next day
+      if (checkOut.getTime() <= checkIn.getTime()) {
+        checkOut.setUTCDate(checkOut.getUTCDate() + 1);
+      }
+      
+      // Iterate through all dates in the booking range
+      const currentDate = new Date(checkIn);
+      while (currentDate < checkOut) {
+        const dateStr = currentDate.toISOString().split('T')[0];
+        
+        // Only add if within the requested range (if specified)
+        const inRange = (!startDate || dateStr >= startDate) && (!endDate || dateStr <= endDate);
+        
+        if (inRange && !unavailableDates.includes(dateStr) && 
+            !partiallyAvailable.some(p => p.date === dateStr)) {
+          unavailableDates.push(dateStr);
+        }
+        
+        currentDate.setUTCDate(currentDate.getUTCDate() + 1);
       }
     });
   }
@@ -387,7 +439,7 @@ export const getDateBookingSummary = async (date: string): Promise<{
   const [eventRows] = await pool.query<RowDataPacket[]>(
     `SELECT * FROM event_bookings 
      WHERE booking_date = ? 
-     AND status IN ('pending', 'approved')`,
+     AND status = 'approved'`,
     [date]
   );
   
@@ -397,7 +449,7 @@ export const getDateBookingSummary = async (date: string): Promise<{
      FROM bookings b
      LEFT JOIN accommodations a ON b.accommodation_id = a.id
      WHERE b.check_in_date = ? 
-     AND b.status IN ('pending', 'approved')`,
+     AND b.status = 'approved'`,
     [date]
   );
   

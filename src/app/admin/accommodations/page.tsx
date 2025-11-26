@@ -135,7 +135,11 @@ export default function AdminRoomsPage() {
         formData.append('price', editedPrice);
         formData.append('description', editedDescription);
         formData.append('capacity', editedCapacity);
-        formData.append('inclusions', editedInclusions.join('\n'));
+        
+        // Only add inclusions for rooms
+        if (selected.type === 'room') {
+          formData.append('inclusions', editedInclusions.join('\n'));
+        }
 
         // Add new images if any
         newEditImages.forEach((file) => {
@@ -308,7 +312,8 @@ export default function AdminRoomsPage() {
         formData.append('description', newAccommodation.description);
       }
       
-      if (newAccommodation.inclusions) {
+      // Only add inclusions for rooms
+      if (newAccommodation.type === 'room' && newAccommodation.inclusions) {
         formData.append('inclusions', newAccommodation.inclusions);
       }
 
@@ -654,7 +659,7 @@ export default function AdminRoomsPage() {
                         </div>
                       </div>
 
-                      {selected.inclusions && (
+                      {selected.type === 'room' && selected.inclusions && (
                         <div>
                           <Label className="text-sm font-semibold text-muted-foreground mb-2">
                             Inclusions
@@ -1133,26 +1138,28 @@ export default function AdminRoomsPage() {
               />
             </div>
 
-            <div>
-              <Label htmlFor="inclusions" className="text-sm font-semibold">
-                Inclusions
-              </Label>
-              <Textarea
-                id="inclusions"
-                value={newAccommodation.inclusions}
-                onChange={(e) =>
-                  setNewAccommodation({
-                    ...newAccommodation,
-                    inclusions: e.target.value,
-                  })
-                }
-                placeholder="Enter inclusions, one per line&#10;e.g.,&#10;Pool access&#10;Tables and chairs&#10;Shaded area"
-                className="min-h-[100px] resize-none mt-1"
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Enter each inclusion on a new line
-              </p>
-            </div>
+            {newAccommodation.type === 'room' && (
+              <div>
+                <Label htmlFor="inclusions" className="text-sm font-semibold">
+                  Inclusions
+                </Label>
+                <Textarea
+                  id="inclusions"
+                  value={newAccommodation.inclusions}
+                  onChange={(e) =>
+                    setNewAccommodation({
+                      ...newAccommodation,
+                      inclusions: e.target.value,
+                    })
+                  }
+                  placeholder="Enter inclusions, one per line&#10;e.g.,&#10;Pool access&#10;Tables and chairs&#10;Shaded area"
+                  className="min-h-[100px] resize-none mt-1"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Enter each inclusion on a new line
+                </p>
+              </div>
+            )}
 
             <div className="space-y-3">
             <div>

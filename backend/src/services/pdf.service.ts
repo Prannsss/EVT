@@ -13,6 +13,7 @@ interface Booking {
   adults?: number;
   kids?: number;
   pwd?: number;
+  guest_names?: string;
 }
 
 interface EventBooking {
@@ -32,6 +33,7 @@ interface ReportData {
   reportType: 'month' | 'all-time';
   month?: string;
   year?: string;
+  scope?: 'entire' | 'guest-list';
 }
 
 // Constants for styling
@@ -57,10 +59,11 @@ const FONT_SIZES = {
 } as const;
 
 const PAGE = {
-  width: 595.28,
+  width: 841.89,
+  height: 595.28,
   margin: 50,
-  contentWidth: 495.28,
-  newPageThreshold: 700,
+  contentWidth: 741.89,
+  newPageThreshold: 500,
 } as const;
 
 const SPACING = {
@@ -77,7 +80,7 @@ const SPACING = {
 } as const;
 
 export const generateLogBookReport = (res: Response, data: ReportData): void => {
-  const doc = new PDFDocument({ margin: PAGE.margin, size: 'A4' });
+  const doc = new PDFDocument({ margin: PAGE.margin, size: 'A4', layout: 'landscape' });
 
   const timestamp = Date.now();
   const reportPeriod = data.reportType === 'month' && data.month
@@ -94,20 +97,114 @@ export const generateLogBookReport = (res: Response, data: ReportData): void => 
 
   renderHeader(doc, data);
 
-  if (data.walkInLogs.length > 0) {
-    renderWalkInSection(doc, data.walkInLogs);
-  }
+  if (data.scope === 'guest-list') {
+    renderGuestListSection(doc, data);
+  } else {
+    if (data.walkInLogs.length > 0) {
+      renderWalkInSection(doc, data.walkInLogs);
+    }
 
-  if (data.regularBookings.length > 0) {
-    renderRegularBookingsSection(doc, data.regularBookings);
-  }
+    if (data.regularBookings.length > 0) {
+      renderRegularBookingsSection(doc, data.regularBookings);
+    }
 
-  if (data.eventBookings.length > 0) {
-    renderEventBookingsSection(doc, data.eventBookings);
+    if (data.eventBookings.length > 0) {
+      renderEventBookingsSection(doc, data.eventBookings);
+    }
   }
 
   doc.end();
 };
+
+function renderGuestListSection(doc: PDFKit.PDFDocument, data: ReportData): void {
+  renderSectionTitle(doc, 'Guest List Report', true);
+
+  const colWidths = [240, 150, 150, 200];
+  const headers = ['Guest Name', 'Type', 'Date', 'Source'];
+  
+  renderTableHeader(doc, headers, colWidths);
+
+  doc.fontSize(FONT_SIZES.body).font(FONTS.regular);
+
+  let totalGuests = 0;
+
+  // Process Regular Bookings Guests
+  data.regularBookings.forEach(booking => {
+    if (booking.guest_names) {
+      try {
+        const guests = JSON.parse(booking.guest_names);
+        if (Array.isArray(guests)) {
+          guests.forEach((guest: any) => {
+            if (guest.name && guest.name.trim()) {
+              renderGuestRow(doc, guest.name, guest.type || 'Adult', booking.check_in_date, 'Online Booking', colWidths);
+              totalGuests++;
+            }
+          });
+        }
+      } catch (e) {
+        // Ignore parsing errors
+      }
+    }
+  });
+
+  // Process Walk-in Guests
+  data.walkInLogs.forEach(log => {
+    if (log.guest_names) {
+      try {
+        // Try parsing as JSON first
+        const guests = JSON.parse(log.guest_names);
+        if (Array.isArray(guests)) {
+          guests.forEach((guest: any) => {
+            if (guest.name && guest.name.trim()) {
+              renderGuestRow(doc, guest.name, guest.type || 'Adult', log.check_in_date, 'Walk-In', colWidths);
+              totalGuests++;
+            }
+          });
+        }
+      } catch (e) {
+        // If not JSON, might be comma-separated string or plain text
+        const names = log.guest_names.split(',');
+        names.forEach(name => {
+          if (name.trim()) {
+            renderGuestRow(doc, name.trim(), 'Walk-In Guest', log.check_in_date, 'Walk-In', colWidths);
+            totalGuests++;
+          }
+        });
+      }
+    }
+  });
+
+  // Add total row
+  doc.moveDown(SPACING.betweenRows);
+  renderTotalRow(doc, colWidths, 'Total Guests:', totalGuests.toString());
+}
+
+function renderGuestRow(doc: PDFKit.PDFDocument, name: string, type: string, date: string, source: string, colWidths: number[]) {
+  const rowData = [
+    { text: name, color: COLORS.text, align: 'left' as const },
+    { text: type.charAt(0).toUpperCase() + type.slice(1), color: COLORS.text, align: 'left' as const },
+    { text: formatDate(date), color: COLORS.text, align: 'left' as const },
+    { text: source, color: COLORS.text, align: 'left' as const },
+  ];
+
+  const rowHeight = getRowHeight(doc, rowData, colWidths);
+  
+  if (doc.y + rowHeight > PAGE.newPageThreshold) {
+    doc.addPage();
+    doc.y = PAGE.margin;
+  }
+
+  const rowY = doc.y;
+  let xPos = PAGE.margin;
+
+  rowData.forEach((data, i) => {
+    drawTableCell(doc, xPos, rowY, colWidths[i], rowHeight, data.text, data.align, data.color);
+    xPos += colWidths[i];
+  });
+
+  doc.fillColor(COLORS.text);
+  doc.y = rowY + rowHeight;
+}
 
 function renderHeader(doc: PDFKit.PDFDocument, data: ReportData): void {
   doc
@@ -170,35 +267,41 @@ function renderHeader(doc: PDFKit.PDFDocument, data: ReportData): void {
 function renderWalkInSection(doc: PDFKit.PDFDocument, walkInLogs: WalkInLog[]): void {
   renderSectionTitle(doc, 'Walk-In Guests', true);
 
-  const colWidths = [120, 100, 80, 80, 80];
-  const headers = ['Client Name', 'Accommodation', 'Check-In', 'Check-Out', 'Amount'];
+  const colWidths = [140, 120, 90, 90, 200, 100];
+  const headers = ['Client Name', 'Accommodation', 'Check-In', 'Check-Out', 'Accompanying Guests', 'Amount'];
   
   renderTableHeader(doc, headers, colWidths);
 
   doc.fontSize(FONT_SIZES.body).font(FONTS.regular);
   
   walkInLogs.forEach((log, index) => {
-    checkPageBreak(doc);
-
-    const rowY = doc.y;
-    let xPos = PAGE.margin;
-
     const rowData = [
       { text: log.client_name || 'N/A', color: COLORS.text, align: 'left' as const },
       { text: log.accommodation_name || 'N/A', color: COLORS.text, align: 'left' as const },
       { text: formatDate(log.check_in_date), color: COLORS.text, align: 'left' as const },
       { text: log.checked_out_at ? formatDate(log.checked_out_at) : '-', color: COLORS.text, align: 'left' as const },
+      { text: formatGuestNames(log.guest_names), color: COLORS.text, align: 'left' as const },
       { text: formatCurrency(log.amount_paid), color: COLORS.success, align: 'right' as const },
     ];
 
+    const rowHeight = getRowHeight(doc, rowData, colWidths);
+
+    if (doc.y + rowHeight > PAGE.newPageThreshold) {
+      doc.addPage();
+      doc.y = PAGE.margin;
+    }
+
+    const rowY = doc.y;
+    let xPos = PAGE.margin;
+
     // Draw cells for this row
     rowData.forEach((data, i) => {
-      drawTableCell(doc, xPos, rowY, colWidths[i], SPACING.rowHeight, data.text, data.align, data.color);
+      drawTableCell(doc, xPos, rowY, colWidths[i], rowHeight, data.text, data.align, data.color);
       xPos += colWidths[i];
     });
 
     doc.fillColor(COLORS.text);
-    doc.y = rowY + SPACING.rowHeight;
+    doc.y = rowY + rowHeight;
   });
 
   // Add total row
@@ -213,34 +316,40 @@ function renderRegularBookingsSection(doc: PDFKit.PDFDocument, bookings: Booking
   checkSectionPageBreak(doc);
   renderSectionTitle(doc, 'Regular Bookings', true);
 
-  const colWidths = [130, 120, 100, 110];
-  const headers = ['Client Name', 'Accommodation', 'Booking Date', 'Amount'];
+  const colWidths = [150, 140, 100, 240, 110];
+  const headers = ['Client Name', 'Accommodation', 'Booking Date', 'Accompanying Guests', 'Amount'];
   
   renderTableHeader(doc, headers, colWidths);
 
   doc.fontSize(FONT_SIZES.body).font(FONTS.regular);
   
   bookings.forEach((booking, index) => {
-    checkPageBreak(doc);
-
-    const rowY = doc.y;
-    let xPos = PAGE.margin;
-
     const rowData = [
       { text: booking.user_name || booking.user_email || 'Unknown', color: COLORS.text, align: 'left' as const },
       { text: booking.accommodation_name || `Booking #${booking.id}`, color: COLORS.text, align: 'left' as const },
       { text: formatDate(booking.check_in_date), color: COLORS.text, align: 'left' as const },
+      { text: formatGuestNames(booking.guest_names), color: COLORS.text, align: 'left' as const },
       { text: formatCurrency(booking.total_price), color: COLORS.success, align: 'right' as const },
     ];
 
+    const rowHeight = getRowHeight(doc, rowData, colWidths);
+
+    if (doc.y + rowHeight > PAGE.newPageThreshold) {
+      doc.addPage();
+      doc.y = PAGE.margin;
+    }
+
+    const rowY = doc.y;
+    let xPos = PAGE.margin;
+
     // Draw cells for this row
     rowData.forEach((data, i) => {
-      drawTableCell(doc, xPos, rowY, colWidths[i], SPACING.rowHeight, data.text, data.align, data.color);
+      drawTableCell(doc, xPos, rowY, colWidths[i], rowHeight, data.text, data.align, data.color);
       xPos += colWidths[i];
     });
 
     doc.fillColor(COLORS.text);
-    doc.y = rowY + SPACING.rowHeight;
+    doc.y = rowY + rowHeight;
   });
 
   // Add total row
@@ -255,7 +364,7 @@ function renderEventBookingsSection(doc: PDFKit.PDFDocument, bookings: EventBook
   checkSectionPageBreak(doc);
   renderSectionTitle(doc, 'Event Bookings', true);
 
-  const colWidths = [150, 120, 100, 90];
+  const colWidths = [240, 170, 170, 160];
   const headers = ['Client Name', 'Event Type', 'Date', 'Amount'];
   
   renderTableHeader(doc, headers, colWidths);
@@ -263,11 +372,6 @@ function renderEventBookingsSection(doc: PDFKit.PDFDocument, bookings: EventBook
   doc.fontSize(FONT_SIZES.body).font(FONTS.regular);
   
   bookings.forEach((booking, index) => {
-    checkPageBreak(doc);
-
-    const rowY = doc.y;
-    let xPos = PAGE.margin;
-
     const eventType = booking.event_type
       .split('_')
       .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
@@ -280,14 +384,24 @@ function renderEventBookingsSection(doc: PDFKit.PDFDocument, bookings: EventBook
       { text: formatCurrency(booking.total_price), color: COLORS.success, align: 'right' as const },
     ];
 
+    const rowHeight = getRowHeight(doc, rowData, colWidths);
+
+    if (doc.y + rowHeight > PAGE.newPageThreshold) {
+      doc.addPage();
+      doc.y = PAGE.margin;
+    }
+
+    const rowY = doc.y;
+    let xPos = PAGE.margin;
+
     // Draw cells for this row
     rowData.forEach((data, i) => {
-      drawTableCell(doc, xPos, rowY, colWidths[i], SPACING.rowHeight, data.text, data.align, data.color);
+      drawTableCell(doc, xPos, rowY, colWidths[i], rowHeight, data.text, data.align, data.color);
       xPos += colWidths[i];
     });
 
     doc.fillColor(COLORS.text);
-    doc.y = rowY + SPACING.rowHeight;
+    doc.y = rowY + rowHeight;
   });
 
   // Add total row
@@ -408,11 +522,28 @@ function drawTableCell(doc: PDFKit.PDFDocument, x: number, y: number, width: num
   doc
     .fontSize(FONT_SIZES.body)
     .fillColor(color)
-    .text(text, x + padding, y + (height / 2) - (FONT_SIZES.body / 2), {
+    .text(text, x + padding, y + padding, {
       width: width - (padding * 2),
       align: align,
-      lineBreak: false,
+      lineBreak: true,
     });
+}
+
+function getRowHeight(doc: PDFKit.PDFDocument, rowData: any[], colWidths: number[]): number {
+  let maxHeight = SPACING.rowHeight;
+  const padding = 10; // 5 top + 5 bottom
+  
+  rowData.forEach((data, i) => {
+    const textHeight = doc.heightOfString(data.text, {
+      width: colWidths[i] - 10, // 5 left + 5 right padding
+      align: data.align
+    });
+    if (textHeight + padding > maxHeight) {
+      maxHeight = textHeight + padding;
+    }
+  });
+  
+  return maxHeight;
 }
 
 function checkPageBreak(doc: PDFKit.PDFDocument): void {
@@ -453,4 +584,21 @@ function calculateTotal(items: any[], field: string): number {
     const value = Number(item[field]) || 0;
     return sum + value;
   }, 0);
+}
+
+function formatGuestNames(guestNamesStr?: string | null): string {
+  if (!guestNamesStr) return '-';
+  
+  try {
+    const guests = JSON.parse(guestNamesStr);
+    if (Array.isArray(guests)) {
+      const names = guests
+        .filter((g: any) => g.name && g.name.trim())
+        .map((g: any) => g.name.trim());
+      return names.length > 0 ? names.join(', ') : '-';
+    }
+  } catch (e) {
+    return guestNamesStr;
+  }
+  return '-';
 }

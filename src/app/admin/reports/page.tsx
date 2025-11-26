@@ -53,6 +53,7 @@ export default function ReportsPage() {
   const [generating, setGenerating] = useState(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [reportPeriod, setReportPeriod] = useState<string>('all-time');
+  const [reportScope, setReportScope] = useState<string>('entire');
   const [selectedClient, setSelectedClient] = useState<string>('');
   const [clientBookings, setClientBookings] = useState<Booking[]>([]);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
@@ -243,10 +244,10 @@ export default function ReportsPage() {
       setGenerating(true);
       const token = localStorage.getItem('token');
 
-      let url = `${API_URL}/api/reports/generate?reportType=all-time`;
+      let url = `${API_URL}/api/reports/generate?reportType=all-time&scope=${reportScope}`;
       
       if (reportPeriod !== 'all-time') {
-        url = `${API_URL}/api/reports/generate?reportType=month&month=${reportPeriod.split('-')[1]}&year=${reportPeriod.split('-')[0]}`;
+        url = `${API_URL}/api/reports/generate?reportType=month&month=${reportPeriod.split('-')[1]}&year=${reportPeriod.split('-')[0]}&scope=${reportScope}`;
       }
 
       const response = await fetch(url, {
@@ -324,6 +325,19 @@ export default function ReportsPage() {
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
+                <Label htmlFor="scope">Report Scope</Label>
+                <Select value={reportScope} onValueChange={setReportScope}>
+                  <SelectTrigger id="scope">
+                    <SelectValue placeholder="Select scope" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="entire">Entire Report</SelectItem>
+                    <SelectItem value="guest-list">Guest List Only</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
                 <Label htmlFor="period">Report Period</Label>
                 <Select value={reportPeriod} onValueChange={setReportPeriod}>
                   <SelectTrigger id="period">
@@ -333,7 +347,7 @@ export default function ReportsPage() {
                     <SelectItem value="all-time">All Time</SelectItem>
                     {months.map((month, index) => (
                       <SelectItem key={month} value={`${currentYear}-${String(index + 1).padStart(2, '0')}`}>
-                        {month} {currentYear}
+                        {month}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -540,4 +554,3 @@ export default function ReportsPage() {
     </div>
   );
 }
-

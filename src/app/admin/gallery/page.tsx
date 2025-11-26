@@ -10,6 +10,16 @@ import {
   DialogDescription,
   DialogFooter
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -28,16 +38,33 @@ interface GalleryItem {
 export default function AdminGalleryPage() {
   const [galleryItems, setGalleryItems] = useState<GalleryItem[]>([]);
   const [selectedItem, setSelectedItem] = useState<GalleryItem | null>(null);
+  const [itemToDelete, setItemToDelete] = useState<number | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentUserRole, setCurrentUserRole] = useState<string>('');
+  const [feedback, setFeedback] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    type: 'success' | 'error' | 'info';
+  }>({
+    isOpen: false,
+    title: '',
+    description: '',
+    type: 'info'
+  });
+
+  const showFeedback = (title: string, description: string, type: 'success' | 'error' | 'info' = 'info') => {
+    setFeedback({ isOpen: true, title, description, type });
+  };
   
   // Add form state
   const [newItem, setNewItem] = useState({
     description: ''
   });
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -84,10 +111,34 @@ export default function AdminGalleryPage() {
     }
   };
 
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const droppedFiles = Array.from(e.dataTransfer.files);
+      const imageFiles = droppedFiles.filter(file => file.type.startsWith('image/'));
+      
+      if (imageFiles.length > 0) {
+        setSelectedFiles(imageFiles);
+      }
+    }
+  };
+
   const handleAddGalleryItem = async () => {
     try {
       if (selectedFiles.length === 0) {
-        alert('Please select at least one image');
+        showFeedback('Selection Required', 'Please select at least one image', 'error');
         return;
       }
 
@@ -102,7 +153,7 @@ export default function AdminGalleryPage() {
       const userStr = localStorage.getItem('user');
       
       if (!token) {
-        alert('Authentication required. Please login again.');
+        showFeedback('Authentication Error', 'Authentication required. Please login again.', 'error');
         window.location.href = '/login';
         return;
       }
@@ -112,7 +163,7 @@ export default function AdminGalleryPage() {
         const user = JSON.parse(userStr);
         console.log('Current user:', user);
         if (user.role !== 'admin') {
-          alert('Admin access required. Your current role is: ' + user.role);
+          showFeedback('Access Denied', 'Admin access required. Your current role is: ' + user.role, 'error');
           return;
         }
       }
@@ -134,7 +185,7 @@ export default function AdminGalleryPage() {
         throw new Error(errorMsg);
       }
 
-      alert('Images uploaded successfully!');
+      showFeedback('Success', 'Images uploaded successfully!', 'success');
       setShowAddModal(false);
       setNewItem({ description: '' });
       setSelectedFiles([]);
@@ -142,21 +193,17 @@ export default function AdminGalleryPage() {
     } catch (error) {
       console.error('Error uploading images:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to upload images';
-      alert(`Error: ${errorMessage}\n\nPlease check the console for more details.`);
+      showFeedback('Upload Failed', `Error: ${errorMessage}`, 'error');
     }
   };
 
   const handleDeleteItem = async (id: number) => {
-    const confirmDelete = confirm('Are you sure you want to delete this gallery item? This action cannot be undone.');
-    
-    if (!confirmDelete) return;
-
     try {
       const token = localStorage.getItem('token');
       const userStr = localStorage.getItem('user');
       
       if (!token) {
-        alert('Authentication required. Please login again.');
+        showFeedback('Authentication Error', 'Authentication required. Please login again.', 'error');
         window.location.href = '/login';
         return;
       }
@@ -165,7 +212,7 @@ export default function AdminGalleryPage() {
       if (userStr) {
         const user = JSON.parse(userStr);
         if (user.role !== 'admin') {
-          alert('Admin access required. Your current role is: ' + user.role);
+          showFeedback('Access Denied', 'Admin access required. Your current role is: ' + user.role, 'error');
           return;
         }
       }
@@ -184,12 +231,13 @@ export default function AdminGalleryPage() {
         throw new Error(data.message || 'Failed to delete item');
       }
 
-      alert('Gallery item deleted successfully!');
+      // alert('Gallery item deleted successfully!');
+      setItemToDelete(null);
       await fetchGalleryItems();
     } catch (error) {
       console.error('Error deleting item:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to delete item';
-      alert(`Error: ${errorMessage}\n\nPlease check the console for more details.`);
+      showFeedback('Delete Failed', `Error: ${errorMessage}`, 'error');
     }
   };
 
@@ -287,22 +335,27 @@ export default function AdminGalleryPage() {
           </Button>
         </div>
       ) : (
-        <div className="grid grid-cols-4 grid-rows-3 gap-4 h-[800px]">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 auto-rows-[200px] gap-4 pb-10">
           {galleryItems.map((item, index) => {
             const images = getImagesFromItem(item);
             const imageUrl = images[0] || '/placeholder-room.svg';
             
             // Bento box grid layout pattern
             const getGridClass = (idx: number) => {
-              const pattern = idx % 6;
+              // Reset pattern every 10 items for variety
+              const pattern = idx % 10;
               switch (pattern) {
-                case 0: return "col-span-2 row-span-2"; // Large
-                case 1: return "col-span-1 row-span-1"; // Small
-                case 2: return "col-span-1 row-span-2"; // Tall
-                case 3: return "col-span-2 row-span-1"; // Wide
-                case 4: return "col-span-1 row-span-1"; // Small
-                case 5: return "col-span-1 row-span-1"; // Small
-                default: return "col-span-1 row-span-1";
+                case 0: return "md:col-span-2 md:row-span-2"; // Large feature
+                case 1: return "md:col-span-1 md:row-span-1"; // Standard
+                case 2: return "md:col-span-1 md:row-span-1"; // Standard
+                case 3: return "md:col-span-1 md:row-span-2"; // Tall portrait
+                case 4: return "md:col-span-1 md:row-span-1"; // Standard
+                case 5: return "md:col-span-2 md:row-span-1"; // Wide landscape
+                case 6: return "md:col-span-1 md:row-span-1"; // Standard
+                case 7: return "md:col-span-1 md:row-span-1"; // Standard
+                case 8: return "md:col-span-2 md:row-span-1"; // Wide landscape
+                case 9: return "md:col-span-1 md:row-span-1"; // Standard
+                default: return "md:col-span-1 md:row-span-1";
               }
             };
 
@@ -317,31 +370,32 @@ export default function AdminGalleryPage() {
                     src={imageUrl} 
                     alt={item.description || 'Gallery item'}
                     fill
-                    className="object-contain group-hover:scale-105 transition-transform duration-300"
+                    className="object-cover group-hover:scale-105 transition-transform duration-500"
                     sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                     onError={(e) => {
                       (e.target as HTMLImageElement).src = '/placeholder-room.svg';
                     }}
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                    <div className="absolute bottom-0 left-0 right-0 p-4">
+                    <div className="absolute bottom-0 left-0 right-0 p-4 transform translate-y-2 group-hover:translate-y-0 transition-transform duration-300">
                       {item.description && (
-                        <p className="text-white text-sm mb-1 line-clamp-2">{item.description}</p>
+                        <p className="text-white text-sm font-medium mb-1 line-clamp-2">{item.description}</p>
                       )}
                       {images.length > 1 && (
-                        <p className="text-white/80 text-sm flex items-center gap-1">
-                          <ImageIcon className="w-4 h-4" />
+                        <p className="text-white/80 text-xs flex items-center gap-1">
+                          <ImageIcon className="w-3 h-3" />
                           {images.length} images
                         </p>
                       )}
                     </div>
-                    <div className="absolute top-4 right-4">
+                    <div className="absolute top-2 right-2 transform translate-x-2 group-hover:translate-x-0 transition-transform duration-300">
                       <Button
-                        size="sm"
+                        size="icon"
                         variant="destructive"
+                        className="h-8 w-8 rounded-full opacity-90 hover:opacity-100"
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleDeleteItem(item.id);
+                          setItemToDelete(item.id);
                         }}
                       >
                         <Trash2 className="w-4 h-4" />
@@ -355,6 +409,46 @@ export default function AdminGalleryPage() {
         </div>
       )}
 
+      {/* Feedback Dialog */}
+      <AlertDialog open={feedback.isOpen} onOpenChange={(open) => setFeedback(prev => ({ ...prev, isOpen: open }))}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className={feedback.type === 'error' ? 'text-destructive' : feedback.type === 'success' ? 'text-green-600' : ''}>
+              {feedback.title}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {feedback.description}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setFeedback(prev => ({ ...prev, isOpen: false }))}>
+              OK
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!itemToDelete} onOpenChange={(open) => !open && setItemToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the gallery item.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => itemToDelete && handleDeleteItem(itemToDelete)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Add Gallery Modal */}
       <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
         <DialogContent className="max-w-2xl">
@@ -364,7 +458,7 @@ export default function AdminGalleryPage() {
               Add Gallery Item
             </DialogTitle>
             <DialogDescription>
-              Upload multiple images to create a gallery collection
+              Upload multiple images to add to the gallery
             </DialogDescription>
           </DialogHeader>
 
@@ -395,7 +489,12 @@ export default function AdminGalleryPage() {
               />
               <div
                 onClick={() => fileInputRef.current?.click()}
-                className="mt-1 border-2 border-dashed rounded-lg p-6 text-center hover:border-primary transition-colors cursor-pointer"
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                className={`mt-1 border-2 border-dashed rounded-lg p-6 text-center transition-colors cursor-pointer ${
+                  isDragging ? 'border-primary bg-primary/5' : 'hover:border-primary'
+                }`}
               >
                 <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
                 {selectedFiles.length > 0 ? (
@@ -409,16 +508,16 @@ export default function AdminGalleryPage() {
                       ))}
                     </div>
                     <p className="text-xs text-muted-foreground mt-2">
-                      Click to change images
+                      Click or drag to change images
                     </p>
                   </>
                 ) : (
                   <>
                     <p className="text-sm text-muted-foreground">
-                      Click to upload images (multiple)
+                      Click or drag to upload images (multiple)
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Maximum 10 images per collection
+                      Each image will be added as a separate item
                     </p>
                   </>
                 )}

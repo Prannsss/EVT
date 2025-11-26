@@ -2,6 +2,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { Menu, LogOut } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import * as React from "react";
@@ -65,42 +66,55 @@ export function Header() {
     router.push("/");
   };
 
+  const scrollToTop = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (pathname === '/') {
+      e.preventDefault();
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      });
+    }
+  };
+
   return (
     <header className={cn(
       "fixed top-0 left-0 right-0 z-50 w-full transition-all duration-300",
       isScrolled || !isHomePage
-        ? "border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60" 
+        ? "glass-dark shadow-lg" 
         : ""
     )}>
       <div className={cn(
-        "w-full max-w-[1400px] mx-auto flex h-16 items-center px-4 sm:px-8 md:px-12 lg:px-16 xl:px-20",
-        !isScrolled && isHomePage ? "text-white" : "text-foreground"
+        "w-full max-w-[1400px] mx-auto flex h-20 items-center px-4 sm:px-8 md:px-12 lg:px-16 xl:px-20",
+        !isScrolled && isHomePage ? "text-foreground" : "text-foreground"
       )}>
         {/* Desktop Nav: Left side */}
         <div className="flex-1 hidden md:flex">
-          <Link href="/" className="flex items-center">
-            <span className={cn(
-              "font-bold font-headline ml-2",
-              !isScrolled && isHomePage ? "text-foreground" : "text-foreground"
-            )}>
-              Elimar Spring Garden
-            </span>
+          <Link href="/" className="flex items-center group" onClick={scrollToTop}>
+            <Image
+              src="/assets/header.svg"
+              alt="Elimar Spring Garden"
+              width={100}
+              height={20}
+              className="transition-opacity group-hover:opacity-80"
+              priority
+            />
           </Link>
         </div>
 
         {/* Desktop Nav: Center */}
         <div className="flex-1 justify-center hidden md:flex">
-            <nav className="flex items-center space-x-2 text-sm font-medium">
+            <nav className="flex items-center space-x-4 text-sm font-medium">
               {navLinks.map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}
+                  onClick={link.href === '/' ? scrollToTop : undefined}
                   className={cn(
-                    "px-4 py-2 rounded-full transition-all duration-200",
-                    !isScrolled && isHomePage && pathname === link.href && "bg-blue-500 text-white",
-                    !isScrolled && isHomePage && pathname !== link.href && "text-foreground hover:bg-blue-500 hover:text-white",
-                    (isScrolled || !isHomePage) && pathname === link.href && "bg-blue-500 text-white",
-                    (isScrolled || !isHomePage) && pathname !== link.href && "text-foreground hover:bg-blue-500 hover:text-white"
+                    "px-6 py-2.5 rounded-full transition-all duration-300 font-medium",
+                    !isScrolled && isHomePage && pathname === link.href && "bg-primary text-primary-foreground backdrop-blur-sm shadow-lg",
+                    !isScrolled && isHomePage && pathname !== link.href && "text-foreground/80 hover:bg-primary/20 hover:text-foreground hover:shadow-md",
+                    (isScrolled || !isHomePage) && pathname === link.href && "bg-primary text-primary-foreground shadow-lg",
+                    (isScrolled || !isHomePage) && pathname !== link.href && "text-foreground/80 hover:bg-primary/10 hover:text-primary hover:shadow-md"
                   )}
                 >
                   {link.label}
@@ -119,14 +133,20 @@ export function Header() {
                 </Button>
               </SheetTrigger>
               <SheetContent side="left">
-                 <Link href="/" className="flex items-center gap-2 mb-6" onClick={() => setOpen(false)}>
-                    <span className="font-bold font-headline">Elimar Spring</span>
+                 <Link href="/" className="flex items-center gap-2 mb-6" onClick={(e) => { setOpen(false); scrollToTop(e); }}>
+                    <Image
+                      src="/assets/header.svg"
+                      alt="Elimar Spring Garden"
+                      width={100}
+                      height={20}
+                    />
                 </Link>
                 <nav className="grid gap-4 text-lg">
                     {navLinks.map((link) => (
                         <SheetClose asChild key={link.href}>
                             <Link
                               href={link.href}
+                              onClick={link.href === '/' ? scrollToTop : undefined}
                               className={cn(
                                 "transition-colors hover:text-foreground",
                                 pathname === link.href ? "text-foreground" : "text-muted-foreground"
@@ -143,17 +163,18 @@ export function Header() {
         
         {/* Mobile Title */}
         <div className="absolute left-1/2 -translate-x-1/2 md:hidden">
-             <Link href="/" className="flex items-center">
-                <span className={cn(
-                  "font-bold font-headline text-lg",
-                  !isScrolled && isHomePage ? "text-foreground" : "text-foreground"
-                )}>
-                    Elimar
-                </span>
+             <Link href="/" className="flex items-center" onClick={scrollToTop}>
+                <Image
+                  src="/assets/header.svg"
+                  alt="Elimar Spring Garden"
+                  width={100}
+                  height={20}
+                  priority
+                />
             </Link>
         </div>
         
-        <div className="flex-1 flex items-center justify-end gap-2">
+        <div className="flex-1 flex items-center justify-end gap-3">
           <ThemeToggle />
           {isLoggedIn ? (
             <>
@@ -164,6 +185,7 @@ export function Header() {
                 variant="destructive" 
                 onClick={handleLogout}
                 disabled={isLoggingOut}
+                className="rounded-full shadow-lg hover:shadow-xl transition-all"
               >
                 {isLoggingOut ? (
                   <>
@@ -182,7 +204,7 @@ export function Header() {
               </Button>
             </>
           ) : (
-            <Button asChild className="bg-blue-500 hover:bg-blue-600 text-white rounded-full">
+            <Button asChild className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-full px-6 shadow-lg hover:shadow-xl transition-all">
               <Link href="/login">Log-In</Link>
             </Button>
           )}

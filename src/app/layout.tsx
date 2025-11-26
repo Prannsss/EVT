@@ -17,7 +17,7 @@ function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
      <>
         {children}
-        <div className="fixed top-4 right-4">
+        <div className="fixed top-4 left-4">
           <ThemeToggle />
         </div>
         <Toaster />
@@ -49,50 +49,109 @@ function MainPageLayout({ children }: { children: React.ReactNode }) {
     <>
       <Header />
       <main className="flex-1">{children}</main>
-      <footer className="bg-primary text-primary-foreground py-12 mt-16">
-        <div className="w-full max-w-[1400px] mx-auto px-4 sm:px-8 md:px-12 lg:px-16 xl:px-20">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
-            <div className="flex flex-col gap-3">
-              <h3 className="font-bold font-headline text-xl mb-2">Elimar Spring Garden</h3>
-              <p className="text-sm opacity-90">A sanctuary of peace and tranquility.</p>
+      
+      {/* Enhanced Footer with curved divider */}
+      <footer className="relative bg-gradient-to-br from-primary via-primary to-primary/90 text-primary-foreground mt-28 md:mt-36">
+        {/* Curved divider */}
+        <div className="absolute top-0 left-0 right-0 overflow-hidden -mt-1">
+          <svg
+            className="relative block w-full h-16 md:h-20"
+            viewBox="0 0 1440 120"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            preserveAspectRatio="none"
+          >
+            <path
+              d="M0 0L60 10C120 20 240 40 360 46.7C480 53 600 47 720 43.3C840 40 960 40 1080 46.7C1200 53 1320 67 1380 73.3L1440 80V120H1380C1320 120 1200 120 1080 120C960 120 840 120 720 120C600 120 480 120 360 120C240 120 120 120 60 120H0V0Z"
+              className="fill-current text-primary"
+            />
+          </svg>
+        </div>
+        
+        <div className="w-full max-w-[1400px] mx-auto px-4 sm:px-8 md:px-12 lg:px-16 xl:px-20 pt-20 pb-12">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-12 md:gap-16 mb-12">
+            {/* Column 1 - Brand */}
+            <div className="flex flex-col gap-4">
+              <h3 className="font-bold font-headline text-2xl mb-2">Elimar Spring Garden</h3>
+              <p className="text-base text-primary-foreground/90 leading-relaxed">
+                A sanctuary of peace and tranquility where nature meets luxury. Experience unforgettable moments in paradise.
+              </p>
             </div>
+            
+            {/* Column 2 - Quick Links */}
             <div>
-              <h3 className="font-bold font-headline text-xl mb-4">Quick Links</h3>
-              <nav className="flex flex-col gap-3 text-sm">
-                <Link href="/" className="hover:underline flex items-center gap-2 opacity-90 hover:opacity-100 transition-opacity">
-                  <Home className="w-4 h-4" />
+              <h3 className="font-bold font-headline text-xl mb-6">Quick Links</h3>
+              <nav className="flex flex-col gap-4 text-base">
+                <Link 
+                  href="/" 
+                  className="hover:underline flex items-center gap-3 text-primary-foreground/90 hover:text-primary-foreground transition-all group"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                >
+                  <div className="w-8 h-8 rounded-full bg-primary-foreground/10 flex items-center justify-center group-hover:bg-primary-foreground/20 transition-colors">
+                    <Home className="w-4 h-4" />
+                  </div>
                   Home
                 </Link>
-                <Link href="/client/accommodations" className="hover:underline flex items-center gap-2 opacity-90 hover:opacity-100 transition-opacity">
-                  <Home className="w-4 h-4" />
+                <Link href="/client/accommodations" className="hover:underline flex items-center gap-3 text-primary-foreground/90 hover:text-primary-foreground transition-all group">
+                  <div className="w-8 h-8 rounded-full bg-primary-foreground/10 flex items-center justify-center group-hover:bg-primary-foreground/20 transition-colors">
+                    <Home className="w-4 h-4" />
+                  </div>
                   Accommodations
                 </Link>
-                <Link href="/client/gallery" className="hover:underline flex items-center gap-2 opacity-90 hover:opacity-100 transition-opacity">
-                  <ImageIcon className="w-4 h-4" />
+                <Link href="/client/gallery" className="hover:underline flex items-center gap-3 text-primary-foreground/90 hover:text-primary-foreground transition-all group">
+                  <div className="w-8 h-8 rounded-full bg-primary-foreground/10 flex items-center justify-center group-hover:bg-primary-foreground/20 transition-colors">
+                    <ImageIcon className="w-4 h-4" />
+                  </div>
                   Gallery
                 </Link>
-                <Link href="/login" className="hover:underline flex items-center gap-2 opacity-90 hover:opacity-100 transition-opacity">
-                  <LogIn className="w-4 h-4" />
+                <Link href="/login" className="hover:underline flex items-center gap-3 text-primary-foreground/90 hover:text-primary-foreground transition-all group">
+                  <div className="w-8 h-8 rounded-full bg-primary-foreground/10 flex items-center justify-center group-hover:bg-primary-foreground/20 transition-colors">
+                    <LogIn className="w-4 h-4" />
+                  </div>
                   Login
                 </Link>
               </nav>
             </div>
+            
+            {/* Column 3 - Contact */}
             <div>
-              <h3 className="font-bold font-headline text-xl mb-4">Contact Us</h3>
-              <div className="text-sm space-y-3">
-                <p className="flex items-start gap-2 opacity-90">
-                  <MapPin className="w-4 h-4 mt-0.5 shrink-0" />
-                  <span>Barangay Binaobao, Dumangas, Philippines, 5006</span>
-                </p>
-                <p className="flex items-center gap-2 opacity-90">
-                  <Phone className="w-4 h-4 shrink-0" />
-                  <span>+(63) 905 556 5755</span>
-                </p>
+              <h3 className="font-bold font-headline text-xl mb-6">Contact Us</h3>
+              <div className="space-y-5 text-base">
+                <a 
+                  href="https://maps.app.goo.gl/Jf6CqFdMuWySYNWHA"
+                  target="_blank"
+                  rel="noopener noreferrer" 
+                  className="flex items-start gap-4 text-primary-foreground/90 hover:text-primary-foreground transition-colors group"
+                >
+                  <div className="w-10 h-10 rounded-full bg-primary-foreground/10 flex items-center justify-center shrink-0 group-hover:bg-primary-foreground/20 transition-colors">
+                    <MapPin className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-primary-foreground mb-1">Location</p>
+                    <p className="leading-relaxed">Barangay Binaobao, Dumangas, Philippines, 5006</p>
+                  </div>
+                </a>
+                <div className="flex items-start gap-4 text-primary-foreground/90">
+                  <div className="w-10 h-10 rounded-full bg-primary-foreground/10 flex items-center justify-center shrink-0">
+                    <Phone className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-primary-foreground mb-1">Phone</p>
+                    <p>+(63) 905 556 5755</p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-          <div className="pt-6 border-t border-primary-foreground/20 text-center text-sm opacity-75">
-            <p>&copy; {new Date().getFullYear()} Elimar Spring Garden. All rights reserved.</p>
+          
+          {/* Copyright */}
+          <div className="pt-8 border-t border-primary-foreground/20 text-center">
+            <p className="text-sm text-primary-foreground/80">
+              &copy; {new Date().getFullYear()} Elimar Spring Garden. All rights reserved.
+            </p>
           </div>
         </div>
       </footer>

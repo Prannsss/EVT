@@ -173,7 +173,7 @@ export default function AccommodationsPage() {
         <CardContent className="pb-4 flex-1">
           <div className="space-y-3">
             <div className="text-2xl font-bold text-primary">{formattedPrice}</div>
-            {inclusionsList.length > 0 && (
+            {accommodation.type === 'room' && inclusionsList.length > 0 && (
               <div>
                 <p className="text-sm font-semibold mb-2 text-muted-foreground">✨ Inclusions:</p>
                 <ul className="text-sm space-y-1">
@@ -210,9 +210,11 @@ export default function AccommodationsPage() {
 
   if (loading) {
     return (
-      <div className="page-container-wide py-16">
-        <div className="flex items-center justify-center h-96">
-          <Loader2 className="w-12 h-12 animate-spin text-primary" />
+      <div className="min-h-screen pt-24 pb-16">
+        <div className="page-container-wide">
+          <div className="flex items-center justify-center h-96">
+            <Loader2 className="w-12 h-12 animate-spin text-primary" />
+          </div>
         </div>
       </div>
     );
@@ -220,26 +222,29 @@ export default function AccommodationsPage() {
 
   if (error) {
     return (
-      <div className="page-container-wide py-16">
-        <div className="flex flex-col items-center justify-center h-96 gap-4">
-          <AlertCircle className="w-16 h-16 text-destructive" />
-          <p className="text-xl text-muted-foreground">{error}</p>
-          <Button onClick={fetchAccommodations}>Try Again</Button>
+      <div className="min-h-screen pt-24 pb-16">
+        <div className="page-container-wide">
+          <div className="flex flex-col items-center justify-center h-96 gap-4">
+            <AlertCircle className="w-16 h-16 text-destructive" />
+            <p className="text-xl text-muted-foreground">{error}</p>
+            <Button onClick={fetchAccommodations}>Try Again</Button>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="page-container-wide py-16">
-      <div className="mb-12 text-center">
-        <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-          Our Accommodations
-        </h1>
-        <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-          Choose from our selection of comfortable cottages and luxurious rooms for your perfect getaway
-        </p>
-      </div>
+    <div className="min-h-screen pt-24 pb-16">
+      <div className="page-container-wide">
+        <div className="mb-12 text-center">
+          <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+            Our Accommodations
+          </h1>
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+            Choose from our selection of comfortable cottages and luxurious rooms for your perfect getaway
+          </p>
+        </div>
 
       {/* Book for an Event Button */}
       <div className="mb-8 flex justify-center">
@@ -312,6 +317,7 @@ export default function AccommodationsPage() {
         isOpen={isEventModalOpen}
         onClose={handleCloseEventModal}
       />
+      </div>
     </div>
   )
 }

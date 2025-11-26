@@ -7,7 +7,7 @@ import { successResponse, errorResponse } from '../utils/response.js';
 
 export const generateReport = async (req: Request, res: Response) => {
   try {
-    const { reportType, month, year } = req.query;
+    const { reportType, month, year, scope } = req.query;
 
     let startDate: string;
     let endDate: string;
@@ -54,6 +54,7 @@ export const generateReport = async (req: Request, res: Response) => {
         b.pwd,
         b.total_price,
         b.status,
+        b.guest_names,
         u.name as user_name,
         u.email as user_email,
         a.name as accommodation_name
@@ -92,6 +93,7 @@ export const generateReport = async (req: Request, res: Response) => {
       reportType: reportType === 'month' ? 'month' : 'all-time',
       month: monthName,
       year: year as string,
+      scope: scope as 'entire' | 'guest-list',
     });
   } catch (err) {
     console.error('Error generating report:', err);

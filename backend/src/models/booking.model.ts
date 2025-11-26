@@ -125,18 +125,35 @@ export const checkAccommodationAvailability = async (
   checkOutDate: string | null,
   excludeBookingId?: number
 ): Promise<boolean> => {
+  // Calculate effective end date for the new booking
+  const checkIn = new Date(checkInDate);
+  const checkOut = checkOutDate ? new Date(checkOutDate) : new Date(checkInDate);
+  
+  // If checkOut <= checkIn, it's a single day booking, so effective end is next day
+  if (checkOut.getTime() <= checkIn.getTime()) {
+    checkOut.setUTCDate(checkOut.getUTCDate() + 1);
+  }
+  
+  const newEffectiveEnd = checkOut.toISOString().split('T')[0];
+  
   let query = `
     SELECT COUNT(*) as count 
     FROM bookings 
     WHERE accommodation_id = ? 
     AND status = 'approved'
     AND (
-      (check_in_date <= ? AND (check_out_date >= ? OR check_out_date IS NULL))
-      OR (? <= check_in_date AND (check_out_date IS NULL OR check_in_date <= ?))
+      -- Check for date range overlaps using exclusive end dates
+      check_in_date < ? 
+      AND (
+        CASE 
+          WHEN check_out_date > check_in_date THEN check_out_date 
+          ELSE DATE_ADD(check_in_date, INTERVAL 1 DAY) 
+        END
+      ) > ?
     )
   `;
   
-  const params: any[] = [accommodationId, checkInDate, checkInDate, checkInDate, checkOutDate || checkInDate];
+  const params: any[] = [accommodationId, newEffectiveEnd, checkInDate];
   
   if (excludeBookingId) {
     query += ' AND id != ?';

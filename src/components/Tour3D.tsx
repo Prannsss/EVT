@@ -208,7 +208,7 @@ export default function Tour3D({ height = '80vh' }: Tour3DProps) {
   return (
     <div className="w-full">
       {/* Title Section */}
-      <div className="text-center mb-8">
+      <div className="text-center mb-6">
         <h2 className="text-3xl md:text-4xl font-bold font-headline">
           Interactive 3D Tour
         </h2>

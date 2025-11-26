@@ -24,7 +24,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  limits: { fileSize: 30 * 1024 * 1024 }, // 30MB limit
   fileFilter: (req, file, cb) => {
     const allowedTypes = /jpeg|jpg|png|gif|webp/;
     const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
@@ -40,8 +40,8 @@ const upload = multer({
 
 router.get('/', getGalleryImages);
 router.get('/:id', getGalleryImage);
-router.post('/', authenticate, requireAdmin, upload.array('images', 10), uploadGalleryImage);
-router.put('/:id', authenticate, requireAdmin, upload.array('images', 10), uploadGalleryImage);
+router.post('/', authenticate, requireAdmin, upload.array('images', 30), uploadGalleryImage);
+router.put('/:id', authenticate, requireAdmin, upload.array('images', 30), uploadGalleryImage);
 router.delete('/:id', authenticate, requireAdmin, removeGalleryImage);
 
 export default router;

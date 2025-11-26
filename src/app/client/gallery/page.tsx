@@ -71,9 +71,11 @@ export default function GalleryPage() {
 
   if (loading) {
     return (
-      <div className="page-container-wide py-16">
-        <div className="flex items-center justify-center h-96">
-          <Loader2 className="w-12 h-12 animate-spin text-primary" />
+      <div className="min-h-screen pt-24 pb-16">
+        <div className="page-container-wide">
+          <div className="flex items-center justify-center h-96">
+            <Loader2 className="w-12 h-12 animate-spin text-primary" />
+          </div>
         </div>
       </div>
     );
@@ -81,26 +83,29 @@ export default function GalleryPage() {
 
   if (error) {
     return (
-      <div className="page-container-wide py-16">
-        <div className="flex flex-col items-center justify-center h-96 gap-4">
-          <AlertCircle className="w-16 h-16 text-destructive" />
-          <p className="text-xl text-muted-foreground">{error}</p>
-          <Button onClick={fetchGalleryItems}>Try Again</Button>
+      <div className="min-h-screen pt-24 pb-16">
+        <div className="page-container-wide">
+          <div className="flex flex-col items-center justify-center h-96 gap-4">
+            <AlertCircle className="w-16 h-16 text-destructive" />
+            <p className="text-xl text-muted-foreground">{error}</p>
+            <Button onClick={fetchGalleryItems}>Try Again</Button>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="page-container-wide py-16">
-      <div className="mb-12 text-center">
-        <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-          Photo Gallery
-        </h1>
-        <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-          Explore the beauty of Elimar Spring Garden through our collection of stunning photos
-        </p>
-      </div>
+    <div className="min-h-screen pt-24 pb-16">
+      <div className="page-container-wide">
+        <div className="mb-12 text-center">
+          <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+            Photo Gallery
+          </h1>
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+            Explore the beauty of Elimar Spring Garden through our collection of stunning photos
+          </p>
+        </div>
 
       {galleryItems.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-24 text-center">
@@ -111,22 +116,27 @@ export default function GalleryPage() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-4 grid-rows-3 gap-4 h-[800px]">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 auto-rows-[200px] gap-4 pb-10">
           {galleryItems.map((item, index) => {
             const images = getImagesFromItem(item);
             const imageUrl = images[0] || '/placeholder-room.svg';
             
             // Bento box grid layout pattern (same as admin)
             const getGridClass = (idx: number) => {
-              const pattern = idx % 6;
+              // Reset pattern every 10 items for variety
+              const pattern = idx % 10;
               switch (pattern) {
-                case 0: return "col-span-2 row-span-2"; // Large
-                case 1: return "col-span-1 row-span-1"; // Small
-                case 2: return "col-span-1 row-span-2"; // Tall
-                case 3: return "col-span-2 row-span-1"; // Wide
-                case 4: return "col-span-1 row-span-1"; // Small
-                case 5: return "col-span-1 row-span-1"; // Small
-                default: return "col-span-1 row-span-1";
+                case 0: return "md:col-span-2 md:row-span-2"; // Large feature
+                case 1: return "md:col-span-1 md:row-span-1"; // Standard
+                case 2: return "md:col-span-1 md:row-span-1"; // Standard
+                case 3: return "md:col-span-1 md:row-span-2"; // Tall portrait
+                case 4: return "md:col-span-1 md:row-span-1"; // Standard
+                case 5: return "md:col-span-2 md:row-span-1"; // Wide landscape
+                case 6: return "md:col-span-1 md:row-span-1"; // Standard
+                case 7: return "md:col-span-1 md:row-span-1"; // Standard
+                case 8: return "md:col-span-2 md:row-span-1"; // Wide landscape
+                case 9: return "md:col-span-1 md:row-span-1"; // Standard
+                default: return "md:col-span-1 md:row-span-1";
               }
             };
 
@@ -276,6 +286,7 @@ export default function GalleryPage() {
           </Dialog>
         );
       })()}
+      </div>
     </div>
   );
 }

@@ -26,6 +26,7 @@ import { API_URL } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useAvailability } from "@/hooks/use-availability";
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
+import BookingConfirmationModal from "./BookingConfirmationModal";
 
 interface Accommodation {
   id: number;
@@ -84,6 +85,8 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
   const [bookingDate, setBookingDate] = useState<Date | undefined>(undefined)
   const [bookingTime, setBookingTime] = useState("09:00")
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
+  const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   
   // Availability state
   const [unavailableDates, setUnavailableDates] = useState<string[]>([])
@@ -186,7 +189,12 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
       }
       
       setCheckingAvailability(true)
-      const dateStr = bookingDate.toISOString().split('T')[0]
+      
+      // Format date properly to avoid timezone offset issues
+      const year = bookingDate.getFullYear()
+      const month = String(bookingDate.getMonth() + 1).padStart(2, '0')
+      const day = String(bookingDate.getDate()).padStart(2, '0')
+      const dateStr = `${year}-${month}-${day}`
       
       // First check event conflicts
       const eventConflicts = await getEventConflicts(dateStr)
@@ -318,76 +326,84 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
     }
   }
 
-  const handleBookNow = async () => {
+  const handleBookNow = () => {
+    // Check if user is logged in by checking localStorage
+    const token = localStorage.getItem('token');
+    const userStr = localStorage.getItem('user');
+    const isLoggedIn = !!(token && userStr);
+
+    if (!isLoggedIn) {
+      // Store booking data in sessionStorage
+      const bookingData = {
+        accommodationId: accommodation?.id,
+        accommodationName: accommodation?.name,
+        adults: adultCount,
+        kids: kidCount,
+        pwd: pwdCount,
+        senior: seniorCount,
+        overnightStay,
+        overnightSwimming,
+        bookingTime,
+        totalPrice,
+        timestamp: new Date().toISOString()
+      }
+      sessionStorage.setItem('pendingBooking', JSON.stringify(bookingData))
+      
+      // Redirect to signup/login
+      toast({
+        title: "Login Required",
+        description: "Please sign up or log in to complete your booking",
+        variant: "default",
+      })
+      router.push('/signup')
+      return
+    }
+
+    // Validate required fields
+    if (!bookingDate) {
+      toast({
+        title: "Missing Information",
+        description: "Please select a booking date",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (adultCount + kidCount + pwdCount + seniorCount === 0) {
+      toast({
+        title: "Missing Information",
+        description: "Please add at least one guest",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (!proofOfPayment) {
+      toast({
+        title: "Payment Proof Required",
+        description: "Please upload proof of payment to proceed",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Open confirmation modal instead of submitting directly
+    setIsConfirmationModalOpen(true)
+  }
+
+  const handleConfirmSubmit = async () => {
     try {
-      // Check if user is logged in by checking localStorage
+      setIsSubmitting(true)
       const token = localStorage.getItem('token');
-      const userStr = localStorage.getItem('user');
-      const isLoggedIn = !!(token && userStr);
-
-      if (!isLoggedIn) {
-        // Store booking data in sessionStorage
-        const bookingData = {
-          accommodationId: accommodation?.id,
-          accommodationName: accommodation?.name,
-          adults: adultCount,
-          kids: kidCount,
-          pwd: pwdCount,
-          senior: seniorCount,
-          overnightStay,
-          overnightSwimming,
-          bookingTime,
-          totalPrice,
-          timestamp: new Date().toISOString()
-        }
-        sessionStorage.setItem('pendingBooking', JSON.stringify(bookingData))
-        
-        // Redirect to signup/login
-        toast({
-          title: "Login Required",
-          description: "Please sign up or log in to complete your booking",
-          variant: "default",
-        })
-        router.push('/signup')
-        return
-      }
-
-      // Validate required fields
-      if (!bookingDate) {
-        toast({
-          title: "Missing Information",
-          description: "Please select a booking date",
-          variant: "destructive",
-        })
-        return
-      }
-
-      if (adultCount + kidCount + pwdCount + seniorCount === 0) {
-        toast({
-          title: "Missing Information",
-          description: "Please add at least one guest",
-          variant: "destructive",
-        })
-        return
-      }
-
-      if (!proofOfPayment) {
-        toast({
-          title: "Payment Proof Required",
-          description: "Please upload proof of payment to proceed",
-          variant: "destructive",
-        })
-        return
-      }
 
       // Create FormData for multipart/form-data request
       const formData = new FormData()
       formData.append('accommodation_id', accommodation!.id.toString())
       
       // Format date properly to avoid timezone offset issues
-      const year = bookingDate.getFullYear()
-      const month = String(bookingDate.getMonth() + 1).padStart(2, '0')
-      const day = String(bookingDate.getDate()).padStart(2, '0')
+      const year = bookingDate!.getFullYear()
+      const month = String(bookingDate!.getMonth() + 1).padStart(2, '0')
+      const day = String(bookingDate!.getDate()).padStart(2, '0')
       const localDateString = `${year}-${month}-${day}`
       
       formData.append('check_in_date', localDateString)
@@ -403,7 +419,7 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
       formData.append('overnight_stay', overnightStay.toString())
       formData.append('overnight_swimming', overnightSwimming.toString())
       formData.append('total_price', totalPrice.toString())
-      formData.append('proof_of_payment', proofOfPayment)
+      formData.append('proof_of_payment', proofOfPayment!)
 
       // Send booking to API
       const response = await fetch(`${API_URL}/api/bookings`, {
@@ -426,6 +442,8 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
         variant: "default",
       })
       
+      // Close both modals
+      setIsConfirmationModalOpen(false)
       handleClose()
       
       // Optionally redirect to bookings page
@@ -437,6 +455,8 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
         description: error instanceof Error ? error.message : 'Failed to submit booking. Please try again.',
         variant: "destructive",
       })
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -1254,6 +1274,15 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
             )}
           </TabsContent>
         </Tabs>
+
+        {/* Booking Confirmation Modal */}
+        <BookingConfirmationModal
+          isOpen={isConfirmationModalOpen}
+          onClose={() => setIsConfirmationModalOpen(false)}
+          onConfirm={handleConfirmSubmit}
+          totalPrice={totalPrice}
+          isLoading={isSubmitting}
+        />
       </DialogContent>
     </Dialog>
   )

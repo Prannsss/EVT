@@ -25,6 +25,8 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 205 90.2% 48.2%;
     --radius: 0.5rem;
+    --nature-green: 142 76% 36%;
+    --warm-yellow: 45 93% 58%;
   }
   .dark {
     --background: 222.2 84% 4.9%;
@@ -46,6 +48,8 @@
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 205 90.2% 48.2%;
+    --nature-green: 142 76% 36%;
+    --warm-yellow: 45 93% 58%;
   }
 }
 
@@ -55,6 +59,32 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+  
+  /* Modern scrollbar */
+  ::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: hsl(var(--muted));
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--primary));
+    border-radius: 6px;
+    border: 2px solid hsl(var(--muted));
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--primary) / 0.8);
+  }
+  
+  /* Firefox scrollbar */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--primary)) hsl(var(--muted));
   }
 }
 @layer utilities {
@@ -75,4 +105,85 @@
   .page-container-narrow {
     @apply w-full max-w-[1200px] mx-auto px-4 sm:px-8 md:px-12;
   }
+  
+  /* Scroll animations */
+  .fade-in {
+    animation: fadeIn 0.8s ease-out forwards;
+  }
+  
+  .slide-in-left {
+    animation: slideInLeft 0.8s ease-out forwards;
+  }
+  
+  .slide-in-right {
+    animation: slideInRight 0.8s ease-out forwards;
+  }
+  
+  .slide-in-up {
+    animation: slideInUp 0.8s ease-out forwards;
+  }
+  
+  /* Glassmorphism */
+  .glass {
+    @apply bg-background/70 backdrop-blur-md border border-border/50;
+  }
+  
+  .glass-dark {
+    @apply bg-background/80 backdrop-blur-lg border border-border/30;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Smooth scrolling */
+html.scroll-smooth {
+  scroll-behavior: smooth;
+}
+
+/* Gradient text for hero */
+.gradient-text {
+  background: linear-gradient(to bottom, #fbbf24, #f59e0b);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }

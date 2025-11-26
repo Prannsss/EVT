@@ -6,9 +6,11 @@ import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Checkbox } from '../../components/ui/checkbox';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Turtle } from 'lucide-react';
 import { API_URL } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import LegalModal from '@/components/LegalModal';
+import AuthCarousel from '@/components/AuthCarousel';
 
 export default function SignupPage() {
   const router = useRouter();
@@ -16,6 +18,7 @@ export default function SignupPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [isLegalModalOpen, setIsLegalModalOpen] = useState(false);
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -127,12 +130,16 @@ export default function SignupPage() {
 
   return (
     <div className="w-full h-screen lg:grid lg:grid-cols-2">
-      <div className="flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 h-full">
+      <div className="flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 h-full bg-background">
         <div className="mx-auto grid w-[400px] gap-6">
           <div className="grid gap-2">
-            <h1 className="text-3xl font-bold">Sign Up</h1>
+            <Link href="/" className="flex items-center gap-2 mb-2 hover:opacity-80 transition-opacity w-fit">
+              <Turtle className="h-6 w-6 text-primary" />
+              <span className="font-semibold text-primary">Elimar Spring Garden Resort</span>
+            </Link>
+            <h1 className="text-3xl font-bold">Create Account</h1>
             <p className="text-balance text-muted-foreground">
-              Enter your information to create an account
+              Sign up to get started!
             </p>
           </div>
           <form onSubmit={handleSubmit} className="grid gap-4">
@@ -146,6 +153,7 @@ export default function SignupPage() {
                   value={formData.firstName}
                   onChange={handleInputChange}
                   disabled={isLoading}
+                  className="h-11"
                 />
               </div>
               <div className="grid gap-2">
@@ -157,6 +165,7 @@ export default function SignupPage() {
                   value={formData.lastName}
                   onChange={handleInputChange}
                   disabled={isLoading}
+                  className="h-11"
                 />
               </div>
             </div>
@@ -165,11 +174,12 @@ export default function SignupPage() {
               <Input
                 id="email"
                 type="email"
-                placeholder="Email"
+                placeholder="Enter your email"
                 required
                 value={formData.email}
                 onChange={handleInputChange}
                 disabled={isLoading}
+                className="h-11"
               />
             </div>
             <div className="grid gap-2">
@@ -183,6 +193,7 @@ export default function SignupPage() {
                 onChange={handleInputChange}
                 disabled={isLoading}
                 maxLength={15}
+                className="h-11"
               />
               <p className="text-xs text-muted-foreground">
                 Enter your 11-digit Philippine mobile number
@@ -193,12 +204,13 @@ export default function SignupPage() {
               <div className="relative">
                 <Input
                   id="password"
-                  placeholder="Password"
+                  placeholder="Create a password"
                   type={showPassword ? 'text' : 'password'}
                   required
                   value={formData.password}
                   onChange={handleInputChange}
                   disabled={isLoading}
+                  className="h-11 pr-10"
                 />
                 <button
                   type="button"
@@ -240,27 +252,21 @@ export default function SignupPage() {
               <div className="grid gap-1.5 leading-none">
                 <label
                   htmlFor="acceptTerms"
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  className="text-sm font-medium leading-relaxed peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                 >
-                  By creating an account you agree to our{' '}
-                  <Link
-                    href="#"
-                    className="underline"
+                  I have read and agree to the{' '}
+                  <button
+                    type="button"
+                    onClick={() => setIsLegalModalOpen(true)}
+                    className="text-blue-600 hover:text-blue-700 underline font-medium"
+                    disabled={isLoading}
                   >
-                    Terms and Conditions
-                  </Link>{' '}
-                  and our{' '}
-                  <Link
-                    href="#"
-                    className="underline"
-                  >
-                    Privacy Policy
-                  </Link>
-                  .
+                    Terms & Conditions and Privacy Policy
+                  </button>
                 </label>
               </div>
             </div>
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            <Button type="submit" className="w-full h-11 text-base" disabled={isLoading}>
               {isLoading ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -273,24 +279,21 @@ export default function SignupPage() {
           </form>
           <div className="mt-4 text-center text-sm">
             Already have an account?{' '}
-            <Link href="/login" className="underline">
+            <Link href="/login" className="font-bold text-primary hover:underline">
               Login
             </Link>
           </div>
         </div>
+
+        {/* Legal Modal */}
+        <LegalModal 
+          isOpen={isLegalModalOpen} 
+          onClose={() => setIsLegalModalOpen(false)} 
+        />
       </div>
-       <div className="hidden bg-muted lg:flex items-center justify-center relative flex-col text-center grid-pattern">
-         <Link href="/" className="absolute top-8 left-8 text-lg font-medium">
-          Elimar Spring Garden
-        </Link>
-        <div className="text-4xl font-bold font-headline tracking-tight">
-          A New Chapter Begins
-        </div>
-        <p className="mt-2 text-lg text-muted-foreground">
-          Create your account and unlock a world of tranquility.
-        </p>
-        <div className="absolute bottom-8 text-sm text-muted-foreground">
-           &copy; {new Date().getFullYear()} Elimar Spring Garden. All rights reserved.
+      <div className="hidden lg:block h-full w-full p-4">
+        <div className="h-full w-full rounded-[32px] overflow-hidden">
+            <AuthCarousel />
         </div>
       </div>
     </div>

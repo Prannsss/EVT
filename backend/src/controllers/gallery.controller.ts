@@ -42,13 +42,16 @@ export const uploadGalleryImage = async (req: Request, res: Response) => {
       return res.status(400).json(errorResponse('No files uploaded', 400));
     }
 
-    // Create array of image paths
-    const imagePaths = files.map(file => `/uploads/${file.filename}`);
-    const imageUrl = JSON.stringify(imagePaths);
+    // Process each file as an individual gallery item
+    const uploadPromises = files.map(file => {
+      const imageUrl = `/uploads/${file.filename}`;
+      // Store as individual record
+      return createGalleryImage({ image_url: imageUrl, description });
+    });
 
-    const id = await createGalleryImage({ image_url: imageUrl, description });
+    await Promise.all(uploadPromises);
 
-    res.status(201).json(successResponse({ id, image_url: imageUrl }, 'Images uploaded successfully'));
+    res.status(201).json(successResponse(null, 'Images uploaded successfully'));
   } catch (error: any) {
     console.error('Upload gallery images error:', error);
     res.status(500).json(errorResponse(error.message));
