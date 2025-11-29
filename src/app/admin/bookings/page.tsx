@@ -38,7 +38,7 @@ import {
   Users,
 } from "lucide-react";
 import { API_URL } from '@/lib/utils';
-import { useToast } from '@/hooks/use-toast';
+import Swal from 'sweetalert2';
 
 interface Booking {
   id: number;
@@ -82,7 +82,6 @@ export default function BookingsPage() {
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
   const [isCheckOutModalOpen, setIsCheckOutModalOpen] = useState(false);
   const [actionBooking, setActionBooking] = useState<Booking | null>(null);
-  const { toast } = useToast();
 
   useEffect(() => {
     fetchBookings();
@@ -181,10 +180,11 @@ export default function BookingsPage() {
       setSelectedBooking(bookingData);
       setIsDetailsModalOpen(true);
     } catch (err) {
-      toast({
+      Swal.fire({
         title: "Error",
-        description: "Failed to load booking details",
-        variant: "destructive",
+        text: "Failed to load booking details",
+        icon: "error",
+        confirmButtonColor: "#ef4444",
       });
     }
   };
@@ -210,21 +210,24 @@ export default function BookingsPage() {
         throw new Error(data.message || 'Failed to approve booking');
       }
 
-      toast({
+      Swal.fire({
         title: "Success",
-        description: isEventBooking 
+        text: isEventBooking 
           ? "Event booking approved successfully" 
           : "Booking approved successfully",
+        icon: "success",
+        confirmButtonColor: "#10b981",
       });
 
       setIsApproveModalOpen(false);
       setActionBooking(null);
       await fetchBookings();
     } catch (err) {
-      toast({
+      Swal.fire({
         title: "Error",
-        description: err instanceof Error ? err.message : 'Failed to approve booking',
-        variant: "destructive",
+        text: err instanceof Error ? err.message : 'Failed to approve booking',
+        icon: "error",
+        confirmButtonColor: "#ef4444",
       });
     }
   };
@@ -250,21 +253,24 @@ export default function BookingsPage() {
         throw new Error(data.message || 'Failed to reject booking');
       }
 
-      toast({
+      Swal.fire({
         title: "Success",
-        description: isEventBooking 
+        text: isEventBooking 
           ? "Event booking rejected successfully" 
           : "Booking rejected successfully",
+        icon: "success",
+        confirmButtonColor: "#10b981",
       });
 
       setIsRejectModalOpen(false);
       setActionBooking(null);
       await fetchBookings();
     } catch (err) {
-      toast({
+      Swal.fire({
         title: "Error",
-        description: err instanceof Error ? err.message : 'Failed to reject booking',
-        variant: "destructive",
+        text: err instanceof Error ? err.message : 'Failed to reject booking',
+        icon: "error",
+        confirmButtonColor: "#ef4444",
       });
     }
   };
@@ -290,21 +296,24 @@ export default function BookingsPage() {
         throw new Error(data.message || 'Failed to check out booking');
       }
 
-      toast({
+      Swal.fire({
         title: "Success",
-        description: isEventBooking 
+        text: isEventBooking 
           ? "Event checked out successfully. Resort is now available." 
           : "Guest checked out successfully. Accommodation is now available.",
+        icon: "success",
+        confirmButtonColor: "#10b981",
       });
 
       setIsCheckOutModalOpen(false);
       setActionBooking(null);
       await fetchBookings();
     } catch (err) {
-      toast({
+      Swal.fire({
         title: "Error",
-        description: err instanceof Error ? err.message : 'Failed to check out',
-        variant: "destructive",
+        text: err instanceof Error ? err.message : 'Failed to check out',
+        icon: "error",
+        confirmButtonColor: "#ef4444",
       });
     }
   };
@@ -334,17 +343,20 @@ export default function BookingsPage() {
         throw new Error(data.message || 'Failed to delete booking');
       }
 
-      toast({
+      Swal.fire({
         title: "Success",
-        description: "Booking deleted successfully",
+        text: "Booking deleted successfully",
+        icon: "success",
+        confirmButtonColor: "#10b981",
       });
 
       await fetchBookings();
     } catch (err) {
-      toast({
+      Swal.fire({
         title: "Error",
-        description: err instanceof Error ? err.message : 'Failed to delete booking',
-        variant: "destructive",
+        text: err instanceof Error ? err.message : 'Failed to delete booking',
+        icon: "error",
+        confirmButtonColor: "#ef4444",
       });
     }
   };

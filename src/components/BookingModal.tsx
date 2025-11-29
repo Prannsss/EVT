@@ -23,7 +23,7 @@ import { Calendar as CalendarComponent } from "./ui/calendar"
 import { Plus, Minus, Clock, Calendar, Loader2, AlertCircle, Info, Droplet } from "lucide-react"
 import Accommodation3D from "./Accommodation3D"
 import { API_URL } from "@/lib/utils";
-import { useToast } from "@/hooks/use-toast";
+import Swal from 'sweetalert2';
 import { useAvailability } from "@/hooks/use-availability";
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
 import BookingConfirmationModal from "./BookingConfirmationModal";
@@ -66,7 +66,6 @@ interface DynamicPricing {
 
 export default function BookingModal({ accommodation, isOpen, onClose }: BookingModalProps) {
   const router = useRouter()
-  const { toast } = useToast()
   const { checkRegularAvailability, getUnavailableDates, getEventConflicts } = useAvailability()
   
   const [adultCount, setAdultCount] = useState(0)
@@ -350,40 +349,44 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
       sessionStorage.setItem('pendingBooking', JSON.stringify(bookingData))
       
       // Redirect to signup/login
-      toast({
+      Swal.fire({
         title: "Login Required",
-        description: "Please sign up or log in to complete your booking",
-        variant: "default",
-      })
+        text: "Please sign up or log in to complete your booking",
+        icon: "info",
+        confirmButtonColor: "#3b82f6",
+      });
       router.push('/signup')
       return
     }
 
     // Validate required fields
     if (!bookingDate) {
-      toast({
+      Swal.fire({
         title: "Missing Information",
-        description: "Please select a booking date",
-        variant: "destructive",
-      })
+        text: "Please select a booking date",
+        icon: "warning",
+        confirmButtonColor: "#f59e0b",
+      });
       return
     }
 
     if (adultCount + kidCount + pwdCount + seniorCount === 0) {
-      toast({
+      Swal.fire({
         title: "Missing Information",
-        description: "Please add at least one guest",
-        variant: "destructive",
-      })
+        text: "Please add at least one guest",
+        icon: "warning",
+        confirmButtonColor: "#f59e0b",
+      });
       return
     }
 
     if (!proofOfPayment) {
-      toast({
+      Swal.fire({
         title: "Payment Proof Required",
-        description: "Please upload proof of payment to proceed",
-        variant: "destructive",
-      })
+        text: "Please upload proof of payment to proceed",
+        icon: "warning",
+        confirmButtonColor: "#f59e0b",
+      });
       return
     }
 
@@ -436,11 +439,12 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
         throw new Error(data.message || 'Failed to create booking')
       }
 
-      toast({
+      Swal.fire({
         title: "Booking Submitted Successfully! 🎉",
-        description: `Your booking for ₱${totalPrice.toLocaleString('en-PH')} has been submitted. Please wait for admin confirmation.`,
-        variant: "default",
-      })
+        text: `Your booking for ₱${totalPrice.toLocaleString('en-PH')} has been submitted. Please wait for admin confirmation.`,
+        icon: "success",
+        confirmButtonColor: "#10b981",
+      });
       
       // Close both modals
       setIsConfirmationModalOpen(false)
@@ -450,11 +454,12 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
       setTimeout(() => router.push('/client/accommodations'), 1000)
     } catch (error) {
       console.error('Booking error:', error)
-      toast({
+      Swal.fire({
         title: "Booking Failed",
-        description: error instanceof Error ? error.message : 'Failed to submit booking. Please try again.',
-        variant: "destructive",
-      })
+        text: error instanceof Error ? error.message : 'Failed to submit booking. Please try again.',
+        icon: "error",
+        confirmButtonColor: "#ef4444",
+      });
     } finally {
       setIsSubmitting(false)
     }

@@ -13,7 +13,7 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { CheckCircle, Mail, RefreshCw, Loader2 } from "lucide-react";
 import { API_URL } from "@/lib/utils";
-import { useToast } from "@/hooks/use-toast";
+import Swal from 'sweetalert2';
 
 interface EmailVerificationProps {
   email: string;
@@ -30,7 +30,6 @@ export default function EmailVerification({
   onClose,
   onVerified,
 }: EmailVerificationProps) {
-  const { toast } = useToast();
   const [code, setCode] = useState(["", "", "", "", "", ""]);
   const [isVerifying, setIsVerifying] = useState(false);
   const [isResending, setIsResending] = useState(false);
@@ -129,10 +128,11 @@ export default function EmailVerification({
 
       if (response.ok && data.success) {
         setSuccess(true);
-        toast({
+        Swal.fire({
           title: "Email Verified! ✓",
-          description: "Your email has been successfully verified",
-          variant: "default",
+          text: "Your email has been successfully verified",
+          icon: "success",
+          confirmButtonColor: "#10b981",
         });
         // Close modal and redirect after a brief success message
         setTimeout(() => {
@@ -141,20 +141,22 @@ export default function EmailVerification({
         }, 1500);
       } else {
         setError(data.message || "Invalid or expired verification code");
-        toast({
+        Swal.fire({
           title: "Verification Failed",
-          description: data.message || "Invalid or expired verification code",
-          variant: "destructive",
+          text: data.message || "Invalid or expired verification code",
+          icon: "error",
+          confirmButtonColor: "#ef4444",
         });
         setCode(["", "", "", "", "", ""]);
         inputRefs.current[0]?.focus();
       }
     } catch (err) {
       setError("Failed to verify code. Please try again.");
-      toast({
+      Swal.fire({
         title: "Verification Error",
-        description: "Failed to verify code. Please try again.",
-        variant: "destructive",
+        text: "Failed to verify code. Please try again.",
+        icon: "error",
+        confirmButtonColor: "#ef4444",
       });
       setCode(["", "", "", "", "", ""]);
       inputRefs.current[0]?.focus();
@@ -180,25 +182,28 @@ export default function EmailVerification({
         setTimeLeft(900); // Reset timer to 15 minutes
         setCode(["", "", "", "", "", ""]);
         inputRefs.current[0]?.focus();
-        toast({
+        Swal.fire({
           title: "Code Resent ✓",
-          description: "A new verification code has been sent to your email",
-          variant: "default",
+          text: "A new verification code has been sent to your email",
+          icon: "success",
+          confirmButtonColor: "#10b981",
         });
       } else {
         setError(data.message || "Failed to resend code");
-        toast({
+        Swal.fire({
           title: "Resend Failed",
-          description: data.message || "Failed to resend code",
-          variant: "destructive",
+          text: data.message || "Failed to resend code",
+          icon: "error",
+          confirmButtonColor: "#ef4444",
         });
       }
     } catch (err) {
       setError("Failed to resend code. Please try again.");
-      toast({
+      Swal.fire({
         title: "Resend Error",
-        description: "Failed to resend code. Please try again.",
-        variant: "destructive",
+        text: "Failed to resend code. Please try again.",
+        icon: "error",
+        confirmButtonColor: "#ef4444",
       });
     } finally {
       setIsResending(false);

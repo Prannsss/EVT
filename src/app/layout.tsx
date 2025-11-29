@@ -166,7 +166,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   const pathname = usePathname();
-  const isAuthPage = pathname === '/login' || pathname === '/signup' || pathname === '/verify-email';
+  const isAuthPage = pathname === '/login' || pathname === '/signup' || pathname === '/verify-email' || pathname === '/forgot-password';
   const isAdminPage = pathname.startsWith('/admin');
   const isClientPage = pathname.startsWith('/client');
 

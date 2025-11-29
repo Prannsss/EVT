@@ -2,11 +2,19 @@ import { sendEmail } from '../config/email.js';
 import { env } from '../config/env.js';
 import { logEmail } from '../models/email-log.model.js';
 
-// ============================================================================
-// TYPE DEFINITIONS
-// ============================================================================
-
 interface VerificationEmailData {
+  to: string;
+  name: string;
+  code: string;
+}
+
+interface AdminInvitationData {
+  to: string;
+  name: string;
+  code: string;
+}
+
+interface PasswordResetData {
   to: string;
   name: string;
   code: string;
@@ -47,9 +55,7 @@ interface CheckOutEmailData {
   };
 }
 
-// ============================================================================
 // VERIFICATION CODE EMAIL
-// ============================================================================
 
 export const sendVerificationCodeEmail = async (
   data: VerificationEmailData
@@ -157,9 +163,223 @@ export const sendVerificationCodeEmail = async (
   }
 };
 
-// ============================================================================
+// ADMIN INVITATION EMAIL
+
+export const sendAdminInvitationEmail = async (
+  data: AdminInvitationData
+): Promise<boolean> => {
+  const subject = 'Admin Invitation - Verify Your Email';
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { 
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+          color: white; 
+          padding: 30px; 
+          text-align: center; 
+          border-radius: 10px 10px 0 0; 
+        }
+        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+        .code-box {
+          background: white;
+          border: 2px dashed #667eea;
+          border-radius: 10px;
+          padding: 30px;
+          margin: 25px 0;
+          text-align: center;
+        }
+        .code {
+          font-size: 36px;
+          font-weight: bold;
+          color: #667eea;
+          letter-spacing: 8px;
+          font-family: 'Courier New', monospace;
+        }
+        .warning {
+          background: #fff3cd;
+          border-left: 4px solid #ffc107;
+          padding: 15px;
+          margin: 20px 0;
+          border-radius: 4px;
+        }
+        .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>Admin Invitation</h1>
+        </div>
+        <div class="content">
+          <p>Dear ${data.name},</p>
+          <p>You have been invited to become an Admin for Elimar Spring Garden Resort. To complete your registration, please verify your email address using the code below:</p>
+          
+          <div class="code-box">
+            <p style="margin: 0; font-size: 14px; color: #666;">Your Verification Code</p>
+            <div class="code">${data.code}</div>
+            <p style="margin: 10px 0 0 0; font-size: 12px; color: #999;">Valid for 15 minutes</p>
+          </div>
+          
+          <div class="warning">
+            <strong>⚠️ Security Notice:</strong>
+            <ul style="margin: 5px 0 0 0; padding-left: 20px;">
+              <li>Never share this code with anyone</li>
+              <li>Our team will never ask for this code</li>
+              <li>This code expires in 15 minutes</li>
+            </ul>
+          </div>
+          
+          <p>If you didn't request this verification code, please ignore this email or contact our support team if you have concerns.</p>
+          
+          <p>Best regards,<br>Elimar Spring Garden Resort</p>
+        </div>
+        <div class="footer">
+          <p>This is an automated message, please do not reply.</p>
+          <p>&copy; ${new Date().getFullYear()} Elimar Spring Garden. All rights reserved.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  try {
+    console.log(`📧 Attempting to send admin invitation email to ${data.to}...`);
+    const sent = await sendEmail({
+      to: data.to,
+      subject,
+      html,
+    });
+
+    const message = `Admin invitation code: ${data.code}`;
+    await logEmail(data.to, subject, message, 'verification', sent ? 'sent' : 'failed');
+
+    if (sent) {
+      console.log(`✅ Admin invitation email sent successfully to ${data.to}`);
+    } else {
+      console.error(`❌ Failed to send admin invitation email to ${data.to} - sendEmail returned false`);
+    }
+    return sent;
+  } catch (error) {
+    console.error('❌ Exception while sending admin invitation email:', error);
+    const message = `Admin invitation code: ${data.code}`;
+    await logEmail(data.to, subject, message, 'verification', 'failed');
+    return false;
+  }
+};
+
+// PASSWORD RESET EMAIL
+
+export const sendPasswordResetEmail = async (
+  data: PasswordResetData
+): Promise<boolean> => {
+  const subject = 'Password Reset - Elimar Spring Garden';
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { 
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+          color: white; 
+          padding: 30px; 
+          text-align: center; 
+          border-radius: 10px 10px 0 0; 
+        }
+        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+        .code-box {
+          background: white;
+          border: 2px dashed #667eea;
+          border-radius: 10px;
+          padding: 30px;
+          margin: 25px 0;
+          text-align: center;
+        }
+        .code {
+          font-size: 36px;
+          font-weight: bold;
+          color: #667eea;
+          letter-spacing: 8px;
+          font-family: 'Courier New', monospace;
+        }
+        .warning {
+          background: #fff3cd;
+          border-left: 4px solid #ffc107;
+          padding: 15px;
+          margin: 20px 0;
+          border-radius: 4px;
+        }
+        .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>Password Reset</h1>
+        </div>
+        <div class="content">
+          <p>Dear ${data.name},</p>
+          <p>To reset your password, please enter the code below to verify that it's you:</p>
+          
+          <div class="code-box">
+            <p style="margin: 0; font-size: 14px; color: #666;">Your Verification Code</p>
+            <div class="code">${data.code}</div>
+            <p style="margin: 10px 0 0 0; font-size: 12px; color: #999;">Valid for 15 minutes</p>
+          </div>
+          
+          <div class="warning">
+            <strong>⚠️ Security Notice:</strong>
+            <ul style="margin: 5px 0 0 0; padding-left: 20px;">
+              <li>Never share this code with anyone</li>
+              <li>Our team will never ask for this code</li>
+              <li>This code expires in 15 minutes</li>
+            </ul>
+          </div>
+          
+          <p>If you didn't request a password reset, please ignore this email or contact our support team if you have concerns.</p>
+          
+          <p>Best regards,<br>Elimar Spring Garden Resort</p>
+        </div>
+        <div class="footer">
+          <p>This is an automated message, please do not reply.</p>
+          <p>&copy; ${new Date().getFullYear()} Elimar Spring Garden. All rights reserved.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  try {
+    console.log(`📧 Attempting to send password reset email to ${data.to}...`);
+    const sent = await sendEmail({
+      to: data.to,
+      subject,
+      html,
+    });
+
+    const message = `Password reset code: ${data.code}`;
+    await logEmail(data.to, subject, message, 'verification', sent ? 'sent' : 'failed');
+
+    if (sent) {
+      console.log(`✅ Password reset email sent successfully to ${data.to}`);
+    } else {
+      console.error(`❌ Failed to send password reset email to ${data.to} - sendEmail returned false`);
+    }
+    return sent;
+  } catch (error) {
+    console.error('❌ Exception while sending password reset email:', error);
+    const message = `Password reset code: ${data.code}`;
+    await logEmail(data.to, subject, message, 'verification', 'failed');
+    return false;
+  }
+};
+
 // BOOKING NOTIFICATION EMAILS (APPROVE/REJECT)
-// ============================================================================
 
 export const sendBookingNotificationEmail = async (
   data: BookingNotificationData
@@ -275,9 +495,7 @@ export const sendBookingNotificationEmail = async (
   }
 };
 
-// ============================================================================
 // BOOKING CONFIRMATION EMAIL (INITIAL BOOKING SUBMISSION)
-// ============================================================================
 
 export const sendBookingConfirmation = async (
   data: BookingConfirmationData
@@ -371,9 +589,7 @@ export const sendBookingConfirmation = async (
   }
 };
 
-// ============================================================================
 // CHECK-OUT THANK YOU EMAIL
-// ============================================================================
 
 export const sendCheckOutThankYouEmail = async (
   data: CheckOutEmailData

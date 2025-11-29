@@ -21,7 +21,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { FileText, Download, Loader2, Plus, Trash2 } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import Swal from 'sweetalert2';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:9002';
 
@@ -47,7 +47,6 @@ interface GuestEntry {
 }
 
 export default function ReportsPage() {
-  const { toast } = useToast();
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
@@ -81,10 +80,11 @@ export default function ReportsPage() {
       }
     } catch (error) {
       console.error('Error fetching clients:', error);
-      toast({
+      Swal.fire({
         title: 'Error',
-        description: 'Failed to load clients',
-        variant: 'destructive',
+        text: 'Failed to load clients',
+        icon: 'error',
+        confirmButtonColor: '#ef4444',
       });
     } finally {
       setLoading(false);
@@ -122,10 +122,11 @@ export default function ReportsPage() {
       }
     } catch (error) {
       console.error('Error fetching booking:', error);
-      toast({
+      Swal.fire({
         title: 'Error',
-        description: 'Failed to fetch booking details',
-        variant: 'destructive',
+        text: 'Failed to fetch booking details',
+        icon: 'error',
+        confirmButtonColor: '#ef4444',
       });
     }
   };
@@ -171,19 +172,21 @@ export default function ReportsPage() {
 
   const handleSaveLogClick = () => {
     if (!selectedClient || !selectedBooking) {
-      toast({
+      Swal.fire({
         title: 'Error',
-        description: 'Please select a client first',
-        variant: 'destructive',
+        text: 'Please select a client first',
+        icon: 'error',
+        confirmButtonColor: '#ef4444',
       });
       return;
     }
 
     if (guestEntries.some(entry => !entry.name.trim())) {
-      toast({
+      Swal.fire({
         title: 'Error',
-        description: 'Please fill in all guest names',
-        variant: 'destructive',
+        text: 'Please fill in all guest names',
+        icon: 'error',
+        confirmButtonColor: '#ef4444',
       });
       return;
     }
@@ -193,10 +196,11 @@ export default function ReportsPage() {
 
   const handleSaveLog = async () => {
     if (!selectedBooking) {
-      toast({
+      Swal.fire({
         title: 'Error',
-        description: 'No booking selected',
-        variant: 'destructive',
+        text: 'No booking selected',
+        icon: 'error',
+        confirmButtonColor: '#ef4444',
       });
       return;
     }
@@ -217,9 +221,11 @@ export default function ReportsPage() {
       });
 
       if (response.ok) {
-        toast({
+        Swal.fire({
           title: 'Success',
-          description: 'Guest log saved successfully',
+          text: 'Guest log saved successfully',
+          icon: 'success',
+          confirmButtonColor: '#10b981',
         });
         setSelectedClient('');
         setSelectedBooking(null);
@@ -229,10 +235,11 @@ export default function ReportsPage() {
       }
     } catch (error) {
       console.error('Error saving log:', error);
-      toast({
+      Swal.fire({
         title: 'Error',
-        description: 'Failed to save guest log',
-        variant: 'destructive',
+        text: 'Failed to save guest log',
+        icon: 'error',
+        confirmButtonColor: '#ef4444',
       });
     } finally {
       setSavingLog(false);
@@ -268,17 +275,20 @@ export default function ReportsPage() {
       window.URL.revokeObjectURL(downloadUrl);
       document.body.removeChild(a);
 
-      toast({
+      Swal.fire({
         title: 'Success',
-        description: 'Report generated successfully',
+        text: 'Report generated successfully',
+        icon: 'success',
+        confirmButtonColor: '#10b981',
       });
       setIsReportModalOpen(false);
     } catch (error) {
       console.error('Error generating report:', error);
-      toast({
+      Swal.fire({
         title: 'Error',
-        description: 'Failed to generate report',
-        variant: 'destructive',
+        text: 'Failed to generate report',
+        icon: 'error',
+        confirmButtonColor: '#ef4444',
       });
     } finally {
       setGenerating(false);

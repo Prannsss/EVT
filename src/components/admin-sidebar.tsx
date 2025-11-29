@@ -12,7 +12,8 @@ import {
   Home,
   FileText,
   LogOut,
-  UserPlus
+  UserPlus,
+  UserCog
 } from 'lucide-react';
 import {
   Sidebar,
@@ -43,7 +44,8 @@ const contentLinks = [
 ];
 
 const settingsLinks = [
-  { href: '/admin/settings', label: 'Settings', icon: Settings },
+  { href: '/admin/settings', label: 'Pricing Settings', icon: Settings },
+  { href: '/admin/assign-admin', label: 'Assign Admin', icon: UserCog },
 ];
 
 export function AdminSidebar() {
@@ -76,16 +78,14 @@ export function AdminSidebar() {
                       asChild
                       isActive={isActive}
                       tooltip={link.label}
-                      className={
-                        `transition-all duration-150 rounded-lg px-3 py-2 flex items-center gap-3 ${
-                          isActive
-                            ? 'bg-blue-600 text-white font-semibold'
-                            : 'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
-                        }`
-                    }
+                      className={`transition-all duration-150 rounded-lg ${
+                        isActive
+                          ? '!bg-blue-600 !text-white font-semibold dark:!bg-blue-500 [&>svg]:!text-white'
+                          : 'hover:!bg-blue-100 hover:!text-blue-700 dark:hover:!bg-blue-900/50 dark:hover:!text-blue-300'
+                      }`}
                     >
                       <Link href={link.href}>
-                        <link.icon className={isActive ? 'w-5 h-5' : 'w-5 h-5'} />
+                        <link.icon className="w-5 h-5" />
                         <span>{link.label}</span>
                       </Link>
                     </SidebarMenuButton>
@@ -113,13 +113,11 @@ export function AdminSidebar() {
                       asChild
                       isActive={isActive}
                       tooltip={link.label}
-                      className={
-                        `transition-all duration-200 rounded-lg ${
-                          isActive
-                            ? 'bg-blue-600 text-white font-semibold hover:bg-blue-700'
-                            : 'hover:bg-neutral-100 dark:hover:bg-neutral-800'
-                        }`
-                      }
+                      className={`transition-all duration-150 rounded-lg ${
+                        isActive
+                          ? '!bg-blue-600 !text-white font-semibold dark:!bg-blue-500 [&>svg]:!text-white'
+                          : 'hover:!bg-blue-100 hover:!text-blue-700 dark:hover:!bg-blue-900/50 dark:hover:!text-blue-300'
+                      }`}
                     >
                       <Link href={link.href}>
                         <link.icon className="w-5 h-5" />
@@ -147,14 +145,11 @@ export function AdminSidebar() {
                       asChild
                       isActive={isActive}
                       tooltip={link.label}
-                      className={`
-                        transition-all duration-200 rounded-lg
-                        ${
-                          isActive
-                            ? 'bg-blue-100 dark:bg-blue-900 font-semibold text-blue-800 dark:text-blue-200'
-                            : 'hover:bg-neutral-100 dark:hover:bg-neutral-800'
-                        }
-                      `}
+                      className={`transition-all duration-150 rounded-lg ${
+                        isActive
+                          ? '!bg-blue-600 !text-white font-semibold dark:!bg-blue-500 [&>svg]:!text-white'
+                          : 'hover:!bg-blue-100 hover:!text-blue-700 dark:hover:!bg-blue-900/50 dark:hover:!text-blue-300'
+                      }`}
                     >
                       <Link href={link.href}>
                         <link.icon className="w-5 h-5" />

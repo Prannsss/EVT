@@ -8,13 +8,12 @@ import { Label } from '../../components/ui/label';
 import { Checkbox } from '../../components/ui/checkbox';
 import { Loader2, Turtle } from 'lucide-react';
 import { API_URL } from '@/lib/utils';
-import { useToast } from '@/hooks/use-toast';
+import Swal from 'sweetalert2';
 import LegalModal from '@/components/LegalModal';
 import AuthCarousel from '@/components/AuthCarousel';
 
 export default function SignupPage() {
   const router = useRouter();
-  const { toast } = useToast();
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -57,30 +56,33 @@ export default function SignupPage() {
 
     if (!formData.acceptTerms) {
       setError('Please accept the terms and conditions');
-      toast({
+      Swal.fire({
         title: "Terms Required",
-        description: "Please accept the terms and conditions to continue",
-        variant: "destructive",
+        text: "Please accept the terms and conditions to continue",
+        icon: "warning",
+        confirmButtonColor: "#f59e0b",
       });
       return;
     }
 
     if (formData.password.length < 6) {
       setError('Password must be at least 6 characters');
-      toast({
+      Swal.fire({
         title: "Invalid Password",
-        description: "Password must be at least 6 characters long",
-        variant: "destructive",
+        text: "Password must be at least 6 characters long",
+        icon: "error",
+        confirmButtonColor: "#ef4444",
       });
       return;
     }
 
     if (!validatePhoneNumber(formData.contactNumber)) {
       setError('Please enter a valid Philippine phone number (e.g., 09078845654 or +639078845654)');
-      toast({
+      Swal.fire({
         title: "Invalid Phone Number",
-        description: "Please enter a valid Philippine phone number",
-        variant: "destructive",
+        text: "Please enter a valid Philippine phone number",
+        icon: "error",
+        confirmButtonColor: "#ef4444",
       });
       return;
     }
@@ -108,20 +110,22 @@ export default function SignupPage() {
         throw new Error(data.message || 'Failed to register');
       }
 
-      toast({
+      Swal.fire({
         title: "Registration Successful! ✓",
-        description: "Please check your email to verify your account",
-        variant: "default",
+        text: "Please check your email to verify your account",
+        icon: "success",
+        confirmButtonColor: "#10b981",
       });
 
       // Redirect to verification page
       router.push(`/verify-email?email=${encodeURIComponent(formData.email)}&name=${encodeURIComponent(fullName)}`);
     } catch (err: any) {
       setError(err.message || 'Failed to register. Please try again.');
-      toast({
+      Swal.fire({
         title: "Registration Failed",
-        description: err.message || 'Failed to register. Please try again.',
-        variant: "destructive",
+        text: err.message || 'Failed to register. Please try again.',
+        icon: "error",
+        confirmButtonColor: "#ef4444",
       });
     } finally {
       setIsLoading(false);

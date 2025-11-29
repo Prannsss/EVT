@@ -9,13 +9,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2, CheckCircle, Turtle } from 'lucide-react';
 import { API_URL } from '@/lib/utils';
-import { useToast } from '@/hooks/use-toast';
+import Swal from 'sweetalert2';
 import AuthCarousel from '@/components/AuthCarousel';
 
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { toast } = useToast();
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -30,15 +29,16 @@ function LoginForm() {
     // Check if user was redirected after email verification
     if (searchParams.get('verified') === 'true') {
       setShowVerifiedMessage(true);
-      toast({
+      Swal.fire({
         title: "Email Verified! ✓",
-        description: "Your email has been verified successfully. You can now log in.",
-        variant: "default",
+        text: "Your email has been verified successfully. You can now log in.",
+        icon: "success",
+        confirmButtonColor: "#10b981",
       });
       // Hide message after 5 seconds
       setTimeout(() => setShowVerifiedMessage(false), 5000);
     }
-  }, [searchParams, toast]);
+  }, [searchParams]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { id, value } = e.target;
@@ -68,10 +68,11 @@ function LoginForm() {
         localStorage.setItem('token', data.data.token);
         localStorage.setItem('user', JSON.stringify(data.data.user));
 
-        toast({
+        Swal.fire({
           title: "Login Successful! ✓",
-          description: `Welcome back, ${data.data.user.name}!`,
-          variant: "default",
+          text: `Welcome back, ${data.data.user.name}!`,
+          icon: "success",
+          confirmButtonColor: "#10b981",
         });
 
         // Redirect based on role
@@ -84,18 +85,20 @@ function LoginForm() {
         }, 500);
       } else {
         setError(data.message || 'Invalid email or password');
-        toast({
+        Swal.fire({
           title: "Login Failed",
-          description: data.message || 'Invalid email or password',
-          variant: "destructive",
+          text: data.message || 'Invalid email or password',
+          icon: "error",
+          confirmButtonColor: "#ef4444",
         });
       }
     } catch (err: any) {
       setError('Failed to login. Please try again.');
-      toast({
+      Swal.fire({
         title: "Login Error",
-        description: 'Failed to login. Please check your connection and try again.',
-        variant: "destructive",
+        text: 'Failed to login. Please check your connection and try again.',
+        icon: "error",
+        confirmButtonColor: "#ef4444",
       });
     } finally {
       setIsLoading(false);
@@ -189,7 +192,7 @@ function LoginForm() {
                   Remember me
                 </label>
               </div>
-              <Link href="#" className="text-sm font-medium text-primary hover:underline">
+              <Link href="/forgot-password" className="text-sm font-medium text-primary hover:underline">
                 Forgot Password?
               </Link>
             </div>

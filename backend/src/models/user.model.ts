@@ -60,3 +60,22 @@ export const updateUserEmailVerified = async (
     [verified, id]
   );
 };
+
+export const updatePassword = async (email: string, password: string): Promise<void> => {
+  await pool.query(
+    'UPDATE users SET password = ? WHERE email = ?',
+    [password, email]
+  );
+};
+
+export const getUsersByRole = async (role: string): Promise<User[]> => {
+  const [rows] = await pool.query<RowDataPacket[]>(
+    'SELECT id, name, email, role, created_at FROM users WHERE role = ?',
+    [role]
+  );
+  return rows as User[];
+};
+
+export const deleteUser = async (id: number): Promise<void> => {
+  await pool.query('DELETE FROM users WHERE id = ?', [id]);
+};

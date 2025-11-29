@@ -1,9 +1,10 @@
 import { Request, Response } from 'express';
-import { findUserByEmail, createUser, getAllClients } from '../models/user.model.js';
+import { findUserByEmail, createUser, getAllClients, updatePassword, updateUserEmailVerified, getUsersByRole, deleteUser } from '../models/user.model.js';
 import { hashPassword, comparePassword } from '../utils/password.js';
 import { generateToken } from '../utils/jwt.js';
 import { successResponse, errorResponse } from '../utils/response.js';
-import { generateVerificationCode, createVerificationCode } from '../models/verification.model.js';
+import { generateVerificationCode, createVerificationCode, verifyCode, deleteVerificationCode } from '../models/verification.model.js';
+import { sendVerificationCodeEmail, sendAdminInvitationEmail, sendPasswordResetEmail } from '../services/email.service.js';
 
 export const register = async (req: Request, res: Response) => {
   try {
@@ -134,6 +135,177 @@ export const getClients = async (req: Request, res: Response) => {
     );
   } catch (error: any) {
     console.error('Get clients error:', error);
+    res.status(500).json(errorResponse(error.message));
+  }
+};
+
+export const forgotPassword = async (req: Request, res: Response) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json(errorResponse('Email is required', 400));
+    }
+
+    const user = await findUserByEmail(email);
+    if (!user) {
+      // For security, don't reveal if user exists
+      return res.json(successResponse(null, 'If your email is registered, you will receive a verification code.'));
+    }
+
+    const code = generateVerificationCode();
+    await createVerificationCode(email, code, 15);
+
+    await sendPasswordResetEmail({
+      to: email,
+      name: user.name,
+      code: code,
+    });
+
+    res.json(successResponse(null, 'If your email is registered, you will receive a verification code.'));
+  } catch (error: any) {
+    console.error('Forgot password error:', error);
+    res.status(500).json(errorResponse(error.message));
+  }
+};
+
+export const verifyResetOTP = async (req: Request, res: Response) => {
+  try {
+    const { email, code } = req.body;
+
+    if (!email || !code) {
+      return res.status(400).json(errorResponse('Email and code are required', 400));
+    }
+
+    const isValid = await verifyCode(email, code);
+    if (!isValid) {
+      return res.status(400).json(errorResponse('Invalid or expired verification code', 400));
+    }
+
+    res.json(successResponse({ valid: true }, 'Verification code is valid'));
+  } catch (error: any) {
+    console.error('Verify reset OTP error:', error);
+    res.status(500).json(errorResponse(error.message));
+  }
+};
+
+export const resetPassword = async (req: Request, res: Response) => {
+  try {
+    const { email, code, newPassword } = req.body;
+
+    if (!email || !code || !newPassword) {
+      return res.status(400).json(errorResponse('Email, code, and new password are required', 400));
+    }
+
+    const isValid = await verifyCode(email, code);
+    if (!isValid) {
+      return res.status(400).json(errorResponse('Invalid or expired verification code', 400));
+    }
+
+    const hashedPassword = await hashPassword(newPassword);
+    await updatePassword(email, hashedPassword);
+    await deleteVerificationCode(email, code);
+
+    res.json(successResponse(null, 'Password reset successfully'));
+  } catch (error: any) {
+    console.error('Reset password error:', error);
+    res.status(500).json(errorResponse(error.message));
+  }
+};
+
+export const inviteAdmin = async (req: Request, res: Response) => {
+  try {
+    const { email, name } = req.body;
+
+    if (!email) {
+      return res.status(400).json(errorResponse('Email is required', 400));
+    }
+
+    const existingUser = await findUserByEmail(email);
+    if (existingUser) {
+      return res.status(409).json(errorResponse('User with this email already exists', 409));
+    }
+
+    const code = generateVerificationCode();
+    await createVerificationCode(email, code, 1440); // 24 hours expiration
+
+    await sendAdminInvitationEmail({
+      to: email,
+      name: name || 'New Admin',
+      code: code,
+    });
+
+    res.json(successResponse(null, 'Invitation code sent to email'));
+  } catch (error: any) {
+    console.error('Invite admin error:', error);
+    res.status(500).json(errorResponse(error.message));
+  }
+};
+
+export const getAdmins = async (req: Request, res: Response) => {
+  try {
+    const admins = await getUsersByRole('admin');
+    res.json(successResponse(admins, 'Admins retrieved successfully'));
+  } catch (error: any) {
+    console.error('Get admins error:', error);
+    res.status(500).json(errorResponse(error.message));
+  }
+};
+
+export const deleteAdmin = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    
+    if (!id) {
+      return res.status(400).json(errorResponse('Admin ID is required', 400));
+    }
+
+    // Prevent deleting self
+    if (parseInt(id) === req.user!.id) {
+      return res.status(403).json(errorResponse('Cannot delete your own account', 403));
+    }
+
+    await deleteUser(parseInt(id));
+    res.json(successResponse(null, 'Admin deleted successfully'));
+  } catch (error: any) {
+    console.error('Delete admin error:', error);
+    res.status(500).json(errorResponse(error.message));
+  }
+};
+
+export const createAdmin = async (req: Request, res: Response) => {
+  try {
+    const { email, code, name, contact_number, password } = req.body;
+
+    if (!email || !code || !name || !password) {
+      return res.status(400).json(errorResponse('All fields are required', 400));
+    }
+
+    const isValid = await verifyCode(email, code);
+    if (!isValid) {
+      return res.status(400).json(errorResponse('Invalid or expired verification code', 400));
+    }
+
+    const existingUser = await findUserByEmail(email);
+    if (existingUser) {
+      return res.status(409).json(errorResponse('User already exists', 409));
+    }
+
+    const hashedPassword = await hashPassword(password);
+    const userId = await createUser({
+      name,
+      email,
+      contact_number,
+      password: hashedPassword,
+      role: 'admin',
+    });
+
+    await updateUserEmailVerified(userId, true);
+    await deleteVerificationCode(email, code);
+
+    res.status(201).json(successResponse({ userId }, 'Admin account created successfully'));
+  } catch (error: any) {
+    console.error('Create admin error:', error);
     res.status(500).json(errorResponse(error.message));
   }
 };

@@ -49,7 +49,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Edit, Trash2, Loader2, MoreVertical, UserCheck, X, Calendar, Eye, User, Home, MapPin } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import Swal from 'sweetalert2';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:9002';
 
@@ -86,7 +86,6 @@ interface WalkInLog {
 }
 
 export default function WalkInPage() {
-  const { toast } = useToast();
   const [logs, setLogs] = useState<WalkInLog[]>([]);
   const [accommodations, setAccommodations] = useState<Accommodation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -141,10 +140,11 @@ export default function WalkInPage() {
       }
     } catch (error) {
       console.error('Error fetching data:', error);
-      toast({
+      Swal.fire({
         title: 'Error',
-        description: 'Failed to load data',
-        variant: 'destructive',
+        text: 'Failed to load data',
+        icon: 'error',
+        confirmButtonColor: '#ef4444',
       });
     } finally {
       setLoading(false);
@@ -186,9 +186,11 @@ export default function WalkInPage() {
         throw new Error('Failed to save walk-in log');
       }
 
-      toast({
+      Swal.fire({
         title: 'Success',
-        description: `Walk-in log ${editingLog ? 'updated' : 'created'} successfully`,
+        text: `Walk-in log ${editingLog ? 'updated' : 'created'} successfully`,
+        icon: 'success',
+        confirmButtonColor: '#10b981',
       });
 
       setIsDialogOpen(false);
@@ -196,10 +198,11 @@ export default function WalkInPage() {
       fetchData();
     } catch (error) {
       console.error('Error saving walk-in log:', error);
-      toast({
+      Swal.fire({
         title: 'Error',
-        description: 'Failed to save walk-in log',
-        variant: 'destructive',
+        text: 'Failed to save walk-in log',
+        icon: 'error',
+        confirmButtonColor: '#ef4444',
       });
     } finally {
       setSubmitting(false);
@@ -255,18 +258,21 @@ export default function WalkInPage() {
         throw new Error('Failed to check out walk-in log');
       }
 
-      toast({
+      Swal.fire({
         title: 'Success',
-        description: 'Guest checked out successfully',
+        text: 'Guest checked out successfully',
+        icon: 'success',
+        confirmButtonColor: '#10b981',
       });
 
       fetchData();
     } catch (error) {
       console.error('Error checking out walk-in log:', error);
-      toast({
+      Swal.fire({
         title: 'Error',
-        description: 'Failed to check out walk-in log',
-        variant: 'destructive',
+        text: 'Failed to check out walk-in log',
+        icon: 'error',
+        confirmButtonColor: '#ef4444',
       });
     } finally {
       setIsCheckoutDialogOpen(false);
@@ -290,18 +296,21 @@ export default function WalkInPage() {
         throw new Error('Failed to delete walk-in log');
       }
 
-      toast({
+      Swal.fire({
         title: 'Success',
-        description: 'Walk-in log deleted successfully',
+        text: 'Walk-in log deleted successfully',
+        icon: 'success',
+        confirmButtonColor: '#10b981',
       });
 
       fetchData();
     } catch (error) {
       console.error('Error deleting walk-in log:', error);
-      toast({
+      Swal.fire({
         title: 'Error',
-        description: 'Failed to delete walk-in log',
-        variant: 'destructive',
+        text: 'Failed to delete walk-in log',
+        icon: 'error',
+        confirmButtonColor: '#ef4444',
       });
     }
   };
@@ -324,10 +333,11 @@ export default function WalkInPage() {
 
   const removeGuest = (id: string) => {
     if (guests.length === 1) {
-      toast({
+      Swal.fire({
         title: 'Cannot remove',
-        description: 'At least one guest is required',
-        variant: 'destructive',
+        text: 'At least one guest is required',
+        icon: 'warning',
+        confirmButtonColor: '#f59e0b',
       });
       return;
     }
