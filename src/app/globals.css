@@ -27,6 +27,11 @@
     --radius: 0.5rem;
     --nature-green: 142 76% 36%;
     --warm-yellow: 45 93% 58%;
+    
+    /* Sidebar CSS variables */
+    --sidebar-width: 16rem;
+    --sidebar-width-mobile: 18rem;
+    --sidebar-width-icon: 3rem;
   }
   .dark {
     --background: 222.2 84% 4.9%;

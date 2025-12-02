@@ -173,7 +173,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning className={!isAuthPage && !isAdminPage ? "scroll-smooth" : ""}>
       <head>
-        <title>{isAdminPage ? 'Admin - ' : ''}Elimar Spring Garden</title>
+        <title>{`${isAdminPage ? 'Admin - ' : ''}Elimar Spring Garden`}</title>
         <meta name="description" content="A serene resort nestled in nature. Book your escape." />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
