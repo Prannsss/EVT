@@ -7,7 +7,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Loader2, AlertCircle, Home, Sparkles } from 'lucide-react'
+import { Loader2, AlertCircle, Home, Sparkles, Check } from 'lucide-react'
 import BookingModal from '@/components/BookingModal'
 import EventBookingModal from '@/components/EventBookingModal'
 import { API_URL } from '@/lib/utils';
@@ -175,16 +175,19 @@ export default function AccommodationsPage() {
             <div className="text-2xl font-bold text-primary">{formattedPrice}</div>
             {accommodation.type === 'room' && inclusionsList.length > 0 && (
               <div>
-                <p className="text-sm font-semibold mb-2 text-muted-foreground">✨ Inclusions:</p>
+                <p className="text-sm font-bold mb-2 text-muted-foreground flex items-center gap-1.5">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  Inclusions:
+                </p>
                 <ul className="text-sm space-y-1">
                   {inclusionsList.slice(0, 3).map((item, idx) => (
                     <li key={idx} className="flex items-start">
-                      <span className="mr-2 text-primary font-bold">✓</span>
+                      <Check className="mr-2 h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
                       <span>{item}</span>
                     </li>
                   ))}
                   {inclusionsList.length > 3 && (
-                    <li className="text-xs italic text-muted-foreground ml-5">+ {inclusionsList.length - 3} more</li>
+                    <li className="text-xs italic text-muted-foreground ml-6">+ {inclusionsList.length - 3} more</li>
                   )}
                 </ul>
               </div>

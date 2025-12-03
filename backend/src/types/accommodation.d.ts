@@ -5,6 +5,7 @@ export interface Accommodation {
   capacity: string;
   description: string | null;
   price: number;
+  add_price: number | null;
   inclusions: string | null;
   image_url: string | null;
   panoramic_url: string | null;
@@ -18,6 +19,7 @@ export interface AccommodationCreate {
   capacity: string;
   description?: string;
   price: number;
+  add_price?: number;
   inclusions?: string;
   image_url?: string;
   panoramic_url?: string;
@@ -29,6 +31,7 @@ export interface AccommodationUpdate {
   capacity?: string;
   description?: string;
   price?: number;
+  add_price?: number | null;
   inclusions?: string;
   image_url?: string;
   panoramic_url?: string;

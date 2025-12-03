@@ -19,14 +19,15 @@ export const getAccommodationById = async (id: number): Promise<Accommodation | 
 
 export const createAccommodation = async (data: AccommodationCreate): Promise<number> => {
   const [result] = await pool.query<ResultSetHeader>(
-    `INSERT INTO accommodations (name, type, capacity, description, price, inclusions, image_url, panoramic_url)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO accommodations (name, type, capacity, description, price, add_price, inclusions, image_url, panoramic_url)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       data.name,
       data.type,
       data.capacity,
       data.description || null,
       data.price,
+      data.add_price || null,
       data.inclusions || null,
       data.image_url || null,
       data.panoramic_url || null,

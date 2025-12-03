@@ -64,6 +64,7 @@ interface Accommodation {
   description: string;
   capacity: string;
   price: string;
+  add_price?: string | null;
   image_url: string | null;
   panoramic_url?: string | null;
   inclusions?: string | null;
@@ -93,6 +94,7 @@ export default function AdminRoomsPage() {
     type: "cottage",
     name: "",
     price: "",
+    add_price: "",
     description: "",
     capacity: "",
     inclusions: "",
@@ -349,6 +351,11 @@ export default function AdminRoomsPage() {
       formData.append('capacity', newAccommodation.capacity);
       formData.append('price', newAccommodation.price);
       
+      // Add whole day price for rooms
+      if (newAccommodation.type === 'room' && newAccommodation.add_price) {
+        formData.append('add_price', newAccommodation.add_price);
+      }
+      
       if (newAccommodation.description) {
         formData.append('description', newAccommodation.description);
       }
@@ -409,6 +416,7 @@ export default function AdminRoomsPage() {
         type: "cottage",
         name: "",
         price: "",
+        add_price: "",
         description: "",
         capacity: "",
         inclusions: "",
@@ -1130,10 +1138,10 @@ export default function AdminRoomsPage() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className={`grid gap-4 ${newAccommodation.type === 'room' ? 'grid-cols-3' : 'grid-cols-2'}`}>
               <div>
                 <Label htmlFor="price" className="text-sm font-semibold">
-                  Price
+                  {newAccommodation.type === 'room' ? 'Morning Price' : 'Price'}
                 </Label>
                 <div className="relative mt-1">
                   <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">
@@ -1153,6 +1161,31 @@ export default function AdminRoomsPage() {
                   />
                 </div>
               </div>
+
+              {newAccommodation.type === 'room' && (
+                <div>
+                  <Label htmlFor="add_price" className="text-sm font-semibold">
+                    Whole Day Price
+                  </Label>
+                  <div className="relative mt-1">
+                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">
+                      ₱
+                    </span>
+                    <Input
+                      id="add_price"
+                      value={newAccommodation.add_price}
+                      onChange={(e) =>
+                        setNewAccommodation({
+                          ...newAccommodation,
+                          add_price: e.target.value,
+                        })
+                      }
+                      placeholder="4000"
+                      className="pl-7"
+                    />
+                  </div>
+                </div>
+              )}
 
               <div>
                 <Label htmlFor="capacity" className="text-sm font-semibold">

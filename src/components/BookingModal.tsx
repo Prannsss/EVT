@@ -20,7 +20,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "./ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select"
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover"
 import { Calendar as CalendarComponent } from "./ui/calendar"
-import { Plus, Minus, Clock, Calendar, Loader2, AlertCircle, Info, Droplet } from "lucide-react"
+import { Plus, Minus, Clock, Calendar, Loader2, AlertCircle, Info, Droplet, Sparkles, Check } from "lucide-react"
 import Accommodation3D from "./Accommodation3D"
 import { API_URL } from "@/lib/utils";
 import Swal from 'sweetalert2';
@@ -35,6 +35,7 @@ interface Accommodation {
   description: string;
   capacity: string;
   price: number | string;
+  add_price?: number | string | null;
   inclusions: string;
   image_url: string;
   panoramic_url?: string;
@@ -288,8 +289,13 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
 
     let total = 0
 
-    // Add accommodation base price (ensure it's a number)
-    total += Number(accommodation.price)
+    // For rooms with overnight stay, use add_price (whole day price) instead of base price
+    if (accommodation.type === 'room' && overnightStay && accommodation.add_price) {
+      total += Number(accommodation.add_price)
+    } else {
+      // Add accommodation base price (ensure it's a number)
+      total += Number(accommodation.price)
+    }
 
     // Add entrance fees only
     total += adultCount * pricing.entrance.adult
@@ -303,13 +309,13 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
     total += pwdSwimming * pricing.swimming.pwd
     total += seniorSwimming * pricing.swimming.senior
 
-    // Add overnight swimming fee
-    if (overnightSwimming) {
-      total += (adultCount + kidCount + pwdCount + seniorCount) * pricing.night_swimming.per_head
+    // Add overnight swimming fee (only for cottages) - based on guests who are swimming
+    if (overnightSwimming && accommodation.type === 'cottage') {
+      total += (adultSwimming + kidSwimming + pwdSwimming + seniorSwimming) * pricing.night_swimming.per_head
     }
 
     return total
-  }, [accommodation, pricing, adultCount, kidCount, pwdCount, seniorCount, adultSwimming, kidSwimming, pwdSwimming, seniorSwimming, overnightSwimming])
+  }, [accommodation, pricing, adultCount, kidCount, pwdCount, seniorCount, adultSwimming, kidSwimming, pwdSwimming, seniorSwimming, overnightSwimming, overnightStay])
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -642,11 +648,14 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
 
               {inclusionsList.length > 0 && (
                 <div>
-                  <p className="text-sm font-semibold mb-3 text-muted-foreground">✨ Inclusions:</p>
+                  <p className="text-sm font-bold mb-3 text-muted-foreground flex items-center gap-1.5">
+                    <Sparkles className="h-4 w-4 text-primary" />
+                    Inclusions:
+                  </p>
                   <ul className="space-y-2">
                     {inclusionsList.map((item, idx) => (
                       <li key={idx} className="flex items-start text-sm">
-                        <span className="mr-2 text-primary font-bold">✓</span>
+                        <Check className="mr-2 h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
                         <span>{item}</span>
                       </li>
                     ))}
@@ -1004,36 +1013,48 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
             </div>
           </div>
 
-          {/* Checkboxes for Overnight Options */}
+          {/* Checkboxes for Overnight Options - Show based on accommodation type */}
           <div className="mb-6">
             <h4 className="text-lg font-semibold mb-4">Additional Options</h4>
             <div className="space-y-3">
-              <div className="flex items-center space-x-2">
-                <Checkbox 
-                  id="overnight-stay" 
-                  checked={overnightStay}
-                  onCheckedChange={(checked) => setOvernightStay(checked as boolean)}
-                />
-                <Label 
-                  htmlFor="overnight-stay" 
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                >
-                  Overnight Stay
-                </Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Checkbox 
-                  id="overnight-swimming" 
-                  checked={overnightSwimming}
-                  onCheckedChange={(checked) => setOvernightSwimming(checked as boolean)}
-                />
-                <Label 
-                  htmlFor="overnight-swimming" 
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                >
-                  Overnight Swimming (Night Swimming - ₱{pricing.night_swimming.per_head.toLocaleString('en-PH')} per head)
-                </Label>
-              </div>
+              {/* Overnight Stay - Only for Rooms */}
+              {accommodation.type === 'room' && accommodation.add_price && (
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="overnight-stay" 
+                    checked={overnightStay}
+                    onCheckedChange={(checked) => setOvernightStay(checked as boolean)}
+                  />
+                  <Label 
+                    htmlFor="overnight-stay" 
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                  >
+                    Overnight Stay (Whole Day - ₱{Number(accommodation.add_price).toLocaleString('en-PH')})
+                  </Label>
+                </div>
+              )}
+              
+              {/* Overnight Swimming - Only for Cottages */}
+              {accommodation.type === 'cottage' && (
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="overnight-swimming" 
+                    checked={overnightSwimming}
+                    onCheckedChange={(checked) => setOvernightSwimming(checked as boolean)}
+                  />
+                  <Label 
+                    htmlFor="overnight-swimming" 
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                  >
+                    Overnight Swimming (Night Swimming - ₱{pricing.night_swimming.per_head.toLocaleString('en-PH')} per head)
+                  </Label>
+                </div>
+              )}
+              
+              {/* Show message if no additional options available */}
+              {accommodation.type === 'room' && !accommodation.add_price && (
+                <p className="text-sm text-muted-foreground">No additional options available for this accommodation.</p>
+              )}
             </div>
           </div>
 
@@ -1044,8 +1065,16 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
             {/* Price Breakdown */}
             <div className="mb-4 p-4 bg-muted rounded-lg space-y-2">
               <div className="flex justify-between text-sm">
-                <span>Accommodation ({accommodation.name})</span>
-                <span className="font-medium">₱{Number(accommodation.price).toFixed(2)}</span>
+                <span>
+                  Accommodation ({accommodation.name})
+                  {accommodation.type === 'room' && overnightStay && accommodation.add_price && ' - Whole Day'}
+                </span>
+                <span className="font-medium">
+                  ₱{(accommodation.type === 'room' && overnightStay && accommodation.add_price 
+                    ? Number(accommodation.add_price) 
+                    : Number(accommodation.price)
+                  ).toFixed(2)}
+                </span>
               </div>
               
               {adultCount > 0 && (
@@ -1120,11 +1149,11 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
                 </div>
               )}
               
-              {overnightSwimming && (
+              {overnightSwimming && accommodation.type === 'cottage' && (adultSwimming + kidSwimming + pwdSwimming + seniorSwimming) > 0 && (
                 <div className="flex justify-between text-sm">
-                  <span>Night Swimming ({adultCount + kidCount + pwdCount + seniorCount} guests)</span>
+                  <span>Night Swimming ({adultSwimming + kidSwimming + pwdSwimming + seniorSwimming} guests)</span>
                   <span className="font-medium">
-                    ₱{((adultCount + kidCount + pwdCount + seniorCount) * pricing.night_swimming.per_head).toFixed(2)}
+                    ₱{((adultSwimming + kidSwimming + pwdSwimming + seniorSwimming) * pricing.night_swimming.per_head).toFixed(2)}
                   </span>
                 </div>
               )}

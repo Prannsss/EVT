@@ -192,3 +192,17 @@ html.scroll-smooth {
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
+
+/* SweetAlert2 z-index fix - ensure it appears above all other modals */
+.swal2-container {
+  z-index: 99999 !important;
+}
+
+.swal2-popup {
+  z-index: 99999 !important;
+}
+
+/* Ensure SweetAlert2 backdrop blocks all interactions */
+.swal2-container.swal2-backdrop-show {
+  background: rgba(0, 0, 0, 0.4) !important;
+}

@@ -36,7 +36,7 @@ export const getAccommodation = async (req: Request, res: Response) => {
 
 export const addAccommodation = async (req: Request, res: Response) => {
   try {
-    const { name, type, capacity, description, price, inclusions } = req.body;
+    const { name, type, capacity, description, price, add_price, inclusions } = req.body;
 
     if (!name || !type || !capacity || !price) {
       return res.status(400).json(errorResponse('Missing required fields', 400));
@@ -64,6 +64,7 @@ export const addAccommodation = async (req: Request, res: Response) => {
       capacity,
       description,
       price: parseFloat(price),
+      add_price: add_price ? parseFloat(add_price) : undefined,
       inclusions,
       image_url: imageUrl,
       panoramic_url: panoramicUrl,
@@ -83,6 +84,9 @@ export const modifyAccommodation = async (req: Request, res: Response) => {
 
     // Get text fields from body
     if (req.body.price) updates.price = parseFloat(req.body.price);
+    if (req.body.add_price !== undefined) {
+      updates.add_price = req.body.add_price ? parseFloat(req.body.add_price) : null;
+    }
     if (req.body.description) updates.description = req.body.description;
     if (req.body.capacity) updates.capacity = req.body.capacity;
     if (req.body.inclusions) updates.inclusions = req.body.inclusions;
