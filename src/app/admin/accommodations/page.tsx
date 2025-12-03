@@ -78,6 +78,7 @@ export default function AdminRoomsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editedPrice, setEditedPrice] = useState("");
+  const [editedAddPrice, setEditedAddPrice] = useState("");
   const [editedDescription, setEditedDescription] = useState("");
   const [editedCapacity, setEditedCapacity] = useState("");
   const [editedInclusions, setEditedInclusions] = useState<string[]>([]);
@@ -139,9 +140,12 @@ export default function AdminRoomsPage() {
         formData.append('description', editedDescription);
         formData.append('capacity', editedCapacity);
         
-        // Only add inclusions for rooms
+        // Only add inclusions and add_price for rooms
         if (selected.type === 'room') {
           formData.append('inclusions', editedInclusions.join('\n'));
+          if (editedAddPrice) {
+            formData.append('add_price', editedAddPrice);
+          }
         }
 
         // Add new images if any
@@ -210,6 +214,7 @@ export default function AdminRoomsPage() {
     } else if (selected) {
       // Enter edit mode
       setEditedPrice(selected.price);
+      setEditedAddPrice(selected.add_price || "");
       setEditedDescription(selected.description);
       setEditedCapacity(selected.capacity);
       setEditedInclusions(selected.inclusions ? selected.inclusions.split('\n') : []);
@@ -239,6 +244,7 @@ export default function AdminRoomsPage() {
     setSelected(null);
     setActiveTab("still");
     setEditedPrice("");
+    setEditedAddPrice("");
     setEditedDescription("");
     setEditedCapacity("");
     setEditedInclusions([]);
@@ -699,7 +705,7 @@ export default function AdminRoomsPage() {
 
                         <div>
                           <Label className="text-sm font-semibold text-muted-foreground">
-                            Price
+                            {selected.type === 'room' ? 'Morning Price' : 'Price'}
                           </Label>
                           {isEditing ? (
                             <div className="relative mt-1">
@@ -721,6 +727,33 @@ export default function AdminRoomsPage() {
                             </div>
                           )}
                         </div>
+
+                        {selected.type === 'room' && (
+                          <div>
+                            <Label className="text-sm font-semibold text-muted-foreground">
+                              Whole Day Price
+                            </Label>
+                            {isEditing ? (
+                              <div className="relative mt-1">
+                                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">
+                                  ₱
+                                </span>
+                                <Input
+                                  value={editedAddPrice}
+                                  onChange={(e) => setEditedAddPrice(e.target.value)}
+                                  className="w-full pl-7"
+                                  placeholder="Enter whole day price..."
+                                />
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1 mt-1">
+                                <span className="text-base font-bold text-primary">
+                                  ₱{selected.add_price || 'Not set'}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
 
                       {selected.type === 'room' && selected.inclusions && (
