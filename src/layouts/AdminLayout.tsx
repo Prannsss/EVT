@@ -2,10 +2,9 @@
 
 import React from 'react';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { AdminSidebar } from '@/components/admin-sidebar';
 import { ThemeToggle } from '@/components/theme-toggle';
-import { NotificationDropdown } from '@/components/NotificationDropdown';
 import { NotificationPoller } from '@/components/NotificationPoller';
 import {
   DropdownMenu,
@@ -31,6 +30,18 @@ export default function AdminLayout({
   pageTitle,
   pageDescription,
 }: AdminLayoutProps) {
+  const router = useRouter();
+  
+  // Logout handler
+  const handleLogout = () => {
+    // Clear all authentication data
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    
+    // Redirect to login page
+    router.push('/login');
+  };
+  
   // Derive page title from pathname if not provided
   const pathname = usePathname();
   const inferredTitle = React.useMemo(() => {
@@ -72,9 +83,6 @@ export default function AdminLayout({
 
               {/* Right Side Actions */}
               <div className="flex items-center gap-2">
-                {/* Notifications */}
-                <NotificationDropdown />
-
                 {/* Theme Toggle */}
                 {/* Show gallery action in header when on the gallery page */}
                 {pathname && pathname.startsWith('/admin/gallery') && (
@@ -118,7 +126,10 @@ export default function AdminLayout({
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem className="text-red-600 focus:text-red-600 cursor-pointer">
+                    <DropdownMenuItem 
+                      className="text-red-600 focus:text-red-600 cursor-pointer"
+                      onClick={handleLogout}
+                    >
                       <LogOut className="mr-2 h-4 w-4" />
                       <span>Log out</span>
                     </DropdownMenuItem>

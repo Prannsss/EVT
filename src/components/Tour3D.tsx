@@ -213,7 +213,7 @@ export default function Tour3D({ height = '80vh' }: Tour3DProps) {
           Interactive 3D Tour
         </h2>
         <p className="mt-2 text-muted-foreground italic">
-          Explore our resort in 360°. Drag to look around, scroll to zoom.
+          Explore our resort in 360°. Drag to look around.
         </p>
       </div>
 

@@ -49,7 +49,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Edit, Trash2, Loader2, MoreVertical, UserCheck, X, Calendar, Eye, User, Home, MapPin } from 'lucide-react';
-import Swal from 'sweetalert2';
+import { toast } from '@/hooks/use-toast';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:9002';
 
@@ -140,11 +140,10 @@ export default function WalkInPage() {
       }
     } catch (error) {
       console.error('Error fetching data:', error);
-      Swal.fire({
+      toast({
         title: 'Error',
-        text: 'Failed to load data',
-        icon: 'error',
-        confirmButtonColor: '#ef4444',
+        description: 'Failed to load data',
+        variant: 'destructive',
       });
     } finally {
       setLoading(false);
@@ -186,11 +185,9 @@ export default function WalkInPage() {
         throw new Error('Failed to save walk-in log');
       }
 
-      Swal.fire({
+      toast({
         title: 'Success',
-        text: `Walk-in log ${editingLog ? 'updated' : 'created'} successfully`,
-        icon: 'success',
-        confirmButtonColor: '#10b981',
+        description: `Walk-in log ${editingLog ? 'updated' : 'created'} successfully`,
       });
 
       setIsDialogOpen(false);
@@ -198,11 +195,10 @@ export default function WalkInPage() {
       fetchData();
     } catch (error) {
       console.error('Error saving walk-in log:', error);
-      Swal.fire({
+      toast({
         title: 'Error',
-        text: 'Failed to save walk-in log',
-        icon: 'error',
-        confirmButtonColor: '#ef4444',
+        description: 'Failed to save walk-in log',
+        variant: 'destructive',
       });
     } finally {
       setSubmitting(false);
@@ -258,21 +254,18 @@ export default function WalkInPage() {
         throw new Error('Failed to check out walk-in log');
       }
 
-      Swal.fire({
+      toast({
         title: 'Success',
-        text: 'Guest checked out successfully',
-        icon: 'success',
-        confirmButtonColor: '#10b981',
+        description: 'Guest checked out successfully',
       });
 
       fetchData();
     } catch (error) {
       console.error('Error checking out walk-in log:', error);
-      Swal.fire({
+      toast({
         title: 'Error',
-        text: 'Failed to check out walk-in log',
-        icon: 'error',
-        confirmButtonColor: '#ef4444',
+        description: 'Failed to check out walk-in log',
+        variant: 'destructive',
       });
     } finally {
       setIsCheckoutDialogOpen(false);
@@ -296,21 +289,18 @@ export default function WalkInPage() {
         throw new Error('Failed to delete walk-in log');
       }
 
-      Swal.fire({
+      toast({
         title: 'Success',
-        text: 'Walk-in log deleted successfully',
-        icon: 'success',
-        confirmButtonColor: '#10b981',
+        description: 'Walk-in log deleted successfully',
       });
 
       fetchData();
     } catch (error) {
       console.error('Error deleting walk-in log:', error);
-      Swal.fire({
+      toast({
         title: 'Error',
-        text: 'Failed to delete walk-in log',
-        icon: 'error',
-        confirmButtonColor: '#ef4444',
+        description: 'Failed to delete walk-in log',
+        variant: 'destructive',
       });
     }
   };
@@ -333,11 +323,10 @@ export default function WalkInPage() {
 
   const removeGuest = (id: string) => {
     if (guests.length === 1) {
-      Swal.fire({
+      toast({
         title: 'Cannot remove',
-        text: 'At least one guest is required',
-        icon: 'warning',
-        confirmButtonColor: '#f59e0b',
+        description: 'At least one guest is required',
+        variant: 'destructive',
       });
       return;
     }

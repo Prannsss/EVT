@@ -2,7 +2,7 @@
 
 import React, {useState, useRef, useEffect} from "react"
 import Image from "next/image"
-import Swal from "sweetalert2"
+import { toast } from "@/hooks/use-toast"
 import Accommodation3D from "../../../components/Accommodation3D"
 
 import {
@@ -165,11 +165,10 @@ export default function AdminRoomsPage() {
 
         const token = localStorage.getItem('token');
         if (!token) {
-          Swal.fire({
+          toast({
             title: 'Authentication Required',
-            text: 'Please login to continue.',
-            icon: 'warning',
-            confirmButtonColor: '#3b82f6'
+            description: 'Please login to continue.',
+            variant: 'destructive'
           });
           return;
         }
@@ -188,11 +187,9 @@ export default function AdminRoomsPage() {
           throw new Error(data.message || 'Failed to update accommodation');
         }
 
-        Swal.fire({
+        toast({
           title: 'Success!',
-          text: 'Accommodation updated successfully!',
-          icon: 'success',
-          confirmButtonColor: '#10b981'
+          description: 'Accommodation updated successfully!',
         });
         setIsEditing(false);
         setNewEditImages([]);
@@ -204,11 +201,10 @@ export default function AdminRoomsPage() {
         await fetchAccommodations();
       } catch (error) {
         console.error('Error updating accommodation:', error);
-        Swal.fire({
+        toast({
           title: 'Error',
-          text: error instanceof Error ? error.message : 'Failed to update accommodation',
-          icon: 'error',
-          confirmButtonColor: '#ef4444'
+          description: error instanceof Error ? error.message : 'Failed to update accommodation',
+          variant: 'destructive'
         });
       }
     } else if (selected) {
@@ -283,11 +279,10 @@ export default function AdminRoomsPage() {
     try {
       const token = localStorage.getItem('token');
       if (!token) {
-        Swal.fire({
+        toast({
           title: 'Authentication Required',
-          text: 'Please login to continue.',
-          icon: 'warning',
-          confirmButtonColor: '#3b82f6'
+          description: 'Please login to continue.',
+          variant: 'destructive'
         });
         return;
       }
@@ -305,11 +300,9 @@ export default function AdminRoomsPage() {
         throw new Error(data.message || 'Failed to delete accommodation');
       }
 
-      Swal.fire({
+      toast({
         title: 'Deleted!',
-        text: 'Accommodation deleted successfully!',
-        icon: 'success',
-        confirmButtonColor: '#10b981'
+        description: 'Accommodation deleted successfully!',
       });
       setSelected(null);
       setIsEditing(false);
@@ -318,11 +311,10 @@ export default function AdminRoomsPage() {
       await fetchAccommodations();
     } catch (error) {
       console.error('Error deleting accommodation:', error);
-      Swal.fire({
+      toast({
         title: 'Error',
-        text: error instanceof Error ? error.message : 'Failed to delete accommodation',
-        icon: 'error',
-        confirmButtonColor: '#ef4444'
+        description: error instanceof Error ? error.message : 'Failed to delete accommodation',
+        variant: 'destructive'
       });
     }
   };
@@ -331,21 +323,19 @@ export default function AdminRoomsPage() {
     try {
       // Validate required fields
       if (!newAccommodation.name || !newAccommodation.type || !newAccommodation.capacity || !newAccommodation.price) {
-        Swal.fire({
+        toast({
           title: 'Validation Error',
-          text: 'Please fill in all required fields',
-          icon: 'warning',
-          confirmButtonColor: '#3b82f6'
+          description: 'Please fill in all required fields',
+          variant: 'destructive'
         });
         return;
       }
 
       if (mainImageFiles.length === 0) {
-        Swal.fire({
+        toast({
           title: 'Validation Error',
-          text: 'Please upload at least one main image',
-          icon: 'warning',
-          confirmButtonColor: '#3b82f6'
+          description: 'Please upload at least one main image',
+          variant: 'destructive'
         });
         return;
       }
@@ -384,11 +374,10 @@ export default function AdminRoomsPage() {
       // Get token for authentication
       const token = localStorage.getItem('token');
       if (!token) {
-        Swal.fire({
+        toast({
           title: 'Authentication Required',
-          text: 'Please login to continue.',
-          icon: 'warning',
-          confirmButtonColor: '#3b82f6'
+          description: 'Please login to continue.',
+          variant: 'destructive'
         });
         return;
       }
@@ -409,11 +398,9 @@ export default function AdminRoomsPage() {
       }
 
       // Success!
-      Swal.fire({
+      toast({
         title: 'Success!',
-        text: 'Accommodation added successfully!',
-        icon: 'success',
-        confirmButtonColor: '#10b981'
+        description: 'Accommodation added successfully!',
       });
       setShowAddModal(false);
       
@@ -434,11 +421,10 @@ export default function AdminRoomsPage() {
       await fetchAccommodations();
     } catch (error) {
       console.error('Error adding accommodation:', error);
-      Swal.fire({
+      toast({
         title: 'Error',
-        text: error instanceof Error ? error.message : 'Failed to add accommodation',
-        icon: 'error',
-        confirmButtonColor: '#ef4444'
+        description: error instanceof Error ? error.message : 'Failed to add accommodation',
+        variant: 'destructive'
       });
     }
   };

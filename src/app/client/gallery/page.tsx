@@ -103,7 +103,7 @@ export default function GalleryPage() {
             Photo Gallery
           </h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Explore the beauty of Elimar Spring Garden through our collection of stunning photos
+            Explore the beauty of Elimar Spring Garden Resort through our collection of stunning photos
           </p>
         </div>
 

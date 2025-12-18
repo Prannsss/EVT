@@ -211,7 +211,7 @@ function renderHeader(doc: PDFKit.PDFDocument, data: ReportData): void {
     .fontSize(FONT_SIZES.title)
     .font(FONTS.bold)
     .fillColor(COLORS.primary)
-    .text('Elimar Spring Garden', { align: 'center' });
+    .text('Elimar Spring Garden Resort', { align: 'center' });
   
   doc.moveDown(SPACING.afterTitle);
   

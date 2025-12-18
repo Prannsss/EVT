@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2, Turtle, ArrowLeft, CheckCircle } from 'lucide-react';
 import { API_URL } from '@/lib/utils';
-import Swal from 'sweetalert2';
+import { toast } from '@/hooks/use-toast';
 import AuthCarousel from '@/components/AuthCarousel';
 
 function ForgotPasswordForm() {
@@ -37,11 +37,9 @@ function ForgotPasswordForm() {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        Swal.fire({
+        toast({
           title: "Code Sent",
-          text: "Please check your email for the verification code.",
-          icon: "success",
-          confirmButtonColor: "#10b981",
+          description: "Please check your email for the verification code.",
         });
         setStep('otp');
       } else {
@@ -106,11 +104,9 @@ function ForgotPasswordForm() {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        Swal.fire({
+        toast({
           title: "Password Reset Successful",
-          text: "You can now login with your new password.",
-          icon: "success",
-          confirmButtonColor: "#10b981",
+          description: "You can now login with your new password.",
         });
         router.push('/login');
       } else {

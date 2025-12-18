@@ -13,7 +13,7 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { CheckCircle, Mail, RefreshCw, Loader2 } from "lucide-react";
 import { API_URL } from "@/lib/utils";
-import Swal from 'sweetalert2';
+import { toast } from "@/hooks/use-toast";
 
 interface EmailVerificationProps {
   email: string;
@@ -128,11 +128,9 @@ export default function EmailVerification({
 
       if (response.ok && data.success) {
         setSuccess(true);
-        Swal.fire({
+        toast({
           title: "Email Verified! ✓",
-          text: "Your email has been successfully verified",
-          icon: "success",
-          confirmButtonColor: "#10b981",
+          description: "Your email has been successfully verified",
         });
         // Close modal and redirect after a brief success message
         setTimeout(() => {
@@ -141,22 +139,20 @@ export default function EmailVerification({
         }, 1500);
       } else {
         setError(data.message || "Invalid or expired verification code");
-        Swal.fire({
+        toast({
           title: "Verification Failed",
-          text: data.message || "Invalid or expired verification code",
-          icon: "error",
-          confirmButtonColor: "#ef4444",
+          description: data.message || "Invalid or expired verification code",
+          variant: "destructive",
         });
         setCode(["", "", "", "", "", ""]);
         inputRefs.current[0]?.focus();
       }
     } catch (err) {
       setError("Failed to verify code. Please try again.");
-      Swal.fire({
+      toast({
         title: "Verification Error",
-        text: "Failed to verify code. Please try again.",
-        icon: "error",
-        confirmButtonColor: "#ef4444",
+        description: "Failed to verify code. Please try again.",
+        variant: "destructive",
       });
       setCode(["", "", "", "", "", ""]);
       inputRefs.current[0]?.focus();
@@ -182,28 +178,24 @@ export default function EmailVerification({
         setTimeLeft(900); // Reset timer to 15 minutes
         setCode(["", "", "", "", "", ""]);
         inputRefs.current[0]?.focus();
-        Swal.fire({
+        toast({
           title: "Code Resent ✓",
-          text: "A new verification code has been sent to your email",
-          icon: "success",
-          confirmButtonColor: "#10b981",
+          description: "A new verification code has been sent to your email",
         });
       } else {
         setError(data.message || "Failed to resend code");
-        Swal.fire({
+        toast({
           title: "Resend Failed",
-          text: data.message || "Failed to resend code",
-          icon: "error",
-          confirmButtonColor: "#ef4444",
+          description: data.message || "Failed to resend code",
+          variant: "destructive",
         });
       }
     } catch (err) {
       setError("Failed to resend code. Please try again.");
-      Swal.fire({
+      toast({
         title: "Resend Error",
-        text: "Failed to resend code. Please try again.",
-        icon: "error",
-        confirmButtonColor: "#ef4444",
+        description: "Failed to resend code. Please try again.",
+        variant: "destructive",
       });
     } finally {
       setIsResending(false);

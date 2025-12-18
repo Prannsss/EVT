@@ -1,4 +1,4 @@
-# **App Name**: Elimar Spring Garden
+# **App Name**: Elimar Spring Garden Resort
 
 ## Core Features:
 

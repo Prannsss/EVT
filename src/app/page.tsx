@@ -6,7 +6,73 @@ import { useEffect, useState, useRef } from "react";
 import { Button } from "../components/ui/button";
 import { PlaceHolderImages } from "../lib/placeholder-images";
 import Tour3D from "../components/Tour3D";
-import { MapPin, Award } from "lucide-react";
+import { MapPin, Award, Star } from "lucide-react";
+
+function StarRating() {
+  const [rating, setRating] = useState(0);
+  const [isVisible, setIsVisible] = useState(false);
+  
+  useEffect(() => {
+    // Small delay before starting animations
+    const initialDelay = setTimeout(() => {
+      setIsVisible(true);
+      
+      const duration = 1500;
+      const target = 4.1;
+      const startTime = Date.now();
+      
+      const animate = () => {
+        const currentTime = Date.now();
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        
+        // Easing function for smooth animation
+        const easeOutCubic = (x: number): number => {
+          return 1 - Math.pow(1 - x, 3);
+        };
+        
+        const currentValue = easeOutCubic(progress) * target;
+        setRating(parseFloat(currentValue.toFixed(1)));
+        
+        if (progress < 1) {
+          requestAnimationFrame(animate);
+        } else {
+          setRating(target);
+        }
+      };
+      
+      requestAnimationFrame(animate);
+    }, 800);
+    
+    return () => clearTimeout(initialDelay);
+  }, []);
+
+  return (
+    <div 
+      className={`flex flex-col items-center mt-8 transition-opacity duration-700 ${
+        isVisible ? 'opacity-100' : 'opacity-0'
+      }`}
+    >
+      <div className="flex items-center gap-3">
+        <span className="text-5xl md:text-6xl font-bold text-white font-headline tracking-tighter">{rating}</span>
+        <div className="flex flex-col">
+            <div className="flex text-yellow-400 gap-1">
+            {[1, 2, 3, 4].map((star) => (
+                <Star key={star} className="w-5 h-5 fill-current text-yellow-400" />
+            ))}
+            <div className="relative w-5 h-5">
+                <Star className="w-5 h-5 text-white/30 fill-current absolute" />
+                <div className="overflow-hidden absolute top-0 left-0 w-[10%]">
+                    <Star className="w-5 h-5 text-yellow-400 fill-current" />
+                </div>
+            </div>
+            </div>
+        </div>
+      </div>
+      <p className="text-white/90 text-sm mt-2 font-medium tracking-wide uppercase">on Google Maps</p>
+    </div>
+  );
+}
 
 export default function Home() {
   const heroImage = PlaceHolderImages.find(p => p.id === 'hero');
@@ -49,8 +115,8 @@ export default function Home() {
       <section className="relative w-full h-screen">
         {heroImage && (
           <Image
-            src="/assets/main.png"
-            alt="Elimar Spring Garden Hero Image"
+            src="/assets/main.svg"
+            alt="Elimar Spring Garden Resort Hero Image"
             fill
             className="object-cover"
             priority
@@ -61,26 +127,34 @@ export default function Home() {
         
         {/* Centered hero content */}
         <div className="relative z-10 flex flex-col items-center justify-center h-full text-white px-4">
-          <div className="flex flex-col items-center text-center fade-in">
-            <div className="inline-block mb-6">
-              <span className="text-primary font-semibold text-sm tracking-wider uppercase bg-primary/40 px-4 py-2 rounded-full">
-                Welcome to
-              </span>
+          <div className="flex flex-col items-center text-center fade-in max-w-5xl mx-auto">
+            
+            {/* Badge similar to the example image */}
+            <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md px-6 py-2 rounded-full border border-white/20 mb-8 hover:bg-white/20 transition-colors cursor-default">
+               <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
+               <span className="text-sm font-medium text-white font-headline">Trusted by our guests</span>
             </div>
-            <h1 className="text-6xl md:text-8xl lg:text-9xl tracking-tight drop-shadow-2xl gradient-text font-body font-medium">
-              Elimar Spring Garden
+
+            <h1 className="text-5xl md:text-7xl lg:text-8xl tracking-tight drop-shadow-2xl font-headline font-bold text-white mb-6 leading-tight">
+              Elimar Spring <br className="hidden md:block" /> Garden Resort
             </h1>
+            
+            <p className="text-lg md:text-xl text-white/90 max-w-2xl font-light leading-relaxed mb-8">
+              Experience the perfect blend of nature and luxury. Your escape to paradise begins here.
+            </p>
+
+            <StarRating />
           </div>
           
           {/* Enhanced CTA Button */}
           <Button 
             asChild 
             size="lg" 
-            className="mt-12 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-16 py-8 text-xl rounded-full shadow-xl transition-all duration-300 font-semibold relative overflow-hidden group"
+            className="mt-12 bg-primary hover:bg-primary/90 text-primary-foreground px-10 py-7 text-lg rounded-xl shadow-2xl transition-all duration-300 font-semibold hover:scale-105 relative overflow-hidden group"
           >
-            <Link href="/signup" className="relative z-10">
-              <span className="absolute inset-0 -left-full w-full bg-gradient-to-r from-transparent via-white/40 to-transparent skew-x-12 group-hover:left-full transition-all duration-700 ease-out"></span>
-              Book Your Escape
+            <Link href="/signup" className="flex items-center gap-2 relative z-10">
+              <span className="absolute inset-0 -left-full w-full bg-gradient-to-r from-transparent via-white/30 to-transparent skew-x-12 group-hover:left-full transition-all duration-700 ease-out"></span>
+              Book Your Escape <span className="text-xl">→</span>
             </Link>
           </Button>
         </div>
@@ -99,7 +173,7 @@ export default function Home() {
         className="bg-background py-28 md:py-36"
       >
         <div className="page-container">
-          <div className={`grid md:grid-cols-2 gap-12 md:gap-16 items-center ${isAboutVisible ? 'fade-in' : 'opacity-0'}`}>
+          <div className={`grid md:grid-cols-2 gap-12 md:gap-16 items-center ${isAboutVisible ? 'fade-in' : 'opacity-75'}`}>
             {/* Left Column - Text Content */}
             <div className={`space-y-6 ${isAboutVisible ? 'slide-in-left' : 'opacity-0'}`}>
               <div className="inline-block">

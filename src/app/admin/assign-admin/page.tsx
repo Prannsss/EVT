@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/select";
 import { Loader2, UserPlus, CheckCircle, ShieldCheck, Trash2, AlertTriangle, Eye, EyeOff } from 'lucide-react';
 import { API_URL } from '@/lib/utils';
-import Swal from 'sweetalert2';
+import { toast } from '@/hooks/use-toast';
 
 interface AdminUser {
   id: number;
@@ -91,27 +91,23 @@ export default function AssignAdminPage() {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        Swal.fire({
+        toast({
           title: "Invitation Sent",
-          text: "Verification code sent to the email.",
-          icon: "success",
-          confirmButtonColor: "#10b981",
+          description: "Verification code sent to the email.",
         });
         setStep('details');
       } else {
-        Swal.fire({
+        toast({
           title: "Error",
-          text: data.message || 'Failed to send invitation',
-          icon: "error",
-          confirmButtonColor: "#ef4444",
+          description: data.message || 'Failed to send invitation',
+          variant: "destructive",
         });
       }
     } catch (err) {
-      Swal.fire({
+      toast({
         title: "Error",
-        text: 'Something went wrong. Please try again.',
-        icon: "error",
-        confirmButtonColor: "#ef4444",
+        description: 'Something went wrong. Please try again.',
+        variant: "destructive",
       });
     } finally {
       setIsLoading(false);
@@ -122,11 +118,10 @@ export default function AssignAdminPage() {
     e.preventDefault();
     
     if (password !== confirmPassword) {
-      Swal.fire({
+      toast({
         title: "Error",
-        text: 'Passwords do not match',
-        icon: "error",
-        confirmButtonColor: "#ef4444",
+        description: 'Passwords do not match',
+        variant: "destructive",
       });
       return;
     }
@@ -153,30 +148,23 @@ export default function AssignAdminPage() {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        Swal.fire({
+        toast({
           title: "Admin Assigned Successfully",
-          html: `The new administrator account has been created for <strong>${email}</strong>.<br>They can now log in to the admin panel using the password you set.`,
-          icon: "success",
-          confirmButtonText: "Done",
-          confirmButtonColor: "#10b981",
-          width: '600px'
-        }).then(() => {
-          resetForm();
+          description: `The new administrator account has been created for ${email}. They can now log in to the admin panel.`,
         });
+        resetForm();
       } else {
-        Swal.fire({
+        toast({
           title: "Error",
-          text: data.message || 'Failed to create admin',
-          icon: "error",
-          confirmButtonColor: "#ef4444",
+          description: data.message || 'Failed to create admin',
+          variant: "destructive",
         });
       }
     } catch (err) {
-      Swal.fire({
+      toast({
         title: "Error",
-        text: 'Something went wrong. Please try again.',
-        icon: "error",
-        confirmButtonColor: "#ef4444",
+        description: 'Something went wrong. Please try again.',
+        variant: "destructive",
       });
     } finally {
       setIsLoading(false);
@@ -200,11 +188,10 @@ export default function AssignAdminPage() {
     if (!adminToDelete) return;
 
     if (deleteConfirmationName !== adminToDelete.name) {
-      Swal.fire({
+      toast({
         title: "Name Mismatch",
-        text: "Please type the exact name to confirm deletion.",
-        icon: "error",
-        confirmButtonColor: "#ef4444",
+        description: "Please type the exact name to confirm deletion.",
+        variant: "destructive",
       });
       return;
     }
@@ -222,28 +209,24 @@ export default function AssignAdminPage() {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        Swal.fire({
+        toast({
           title: "Admin Deleted",
-          text: "The admin account has been permanently deleted.",
-          icon: "success",
-          confirmButtonColor: "#10b981",
+          description: "The admin account has been permanently deleted.",
         });
         setShowConfirmDeleteModal(false);
         setSelectedAdminId('');
       } else {
-        Swal.fire({
+        toast({
           title: "Deletion Failed",
-          text: data.message || "Failed to delete admin.",
-          icon: "error",
-          confirmButtonColor: "#ef4444",
+          description: data.message || "Failed to delete admin.",
+          variant: "destructive",
         });
       }
     } catch (error) {
-      Swal.fire({
+      toast({
         title: "Error",
-        text: "Something went wrong. Please try again.",
-        icon: "error",
-        confirmButtonColor: "#ef4444",
+        description: "Something went wrong. Please try again.",
+        variant: "destructive",
       });
     } finally {
       setIsDeleting(false);

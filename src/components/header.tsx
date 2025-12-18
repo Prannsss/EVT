@@ -85,14 +85,14 @@ export function Header() {
     )}>
       <div className={cn(
         "w-full max-w-[1400px] mx-auto flex h-20 items-center px-4 sm:px-8 md:px-12 lg:px-16 xl:px-20",
-        !isScrolled && isHomePage ? "text-foreground" : "text-foreground"
+        !isScrolled && isHomePage ? "text-white" : "text-foreground"
       )}>
         {/* Desktop Nav: Left side */}
         <div className="flex-1 hidden md:flex">
           <Link href="/" className="flex items-center group" onClick={scrollToTop}>
             <Image
               src="/assets/header.svg"
-              alt="Elimar Spring Garden"
+              alt="Elimar Spring Garden Resort"
               width={100}
               height={20}
               className="transition-opacity group-hover:opacity-80"
@@ -111,8 +111,8 @@ export function Header() {
                   onClick={link.href === '/' ? scrollToTop : undefined}
                   className={cn(
                     "px-6 py-2.5 rounded-full transition-all duration-300 font-medium",
-                    !isScrolled && isHomePage && pathname === link.href && "bg-primary text-primary-foreground backdrop-blur-sm shadow-lg",
-                    !isScrolled && isHomePage && pathname !== link.href && "text-foreground/80 hover:bg-primary/20 hover:text-foreground hover:shadow-md",
+                    !isScrolled && isHomePage && pathname === link.href && "bg-white/20 text-white backdrop-blur-sm shadow-lg",
+                    !isScrolled && isHomePage && pathname !== link.href && "text-white/80 hover:bg-white/10 hover:text-white hover:shadow-md",
                     (isScrolled || !isHomePage) && pathname === link.href && "bg-primary text-primary-foreground shadow-lg",
                     (isScrolled || !isHomePage) && pathname !== link.href && "text-foreground/80 hover:bg-primary/10 hover:text-primary hover:shadow-md"
                   )}
@@ -127,7 +127,7 @@ export function Header() {
         <div className="md:hidden">
             <Sheet open={open} onOpenChange={setOpen}>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon">
+                <Button variant="ghost" size="icon" className={!isScrolled && isHomePage ? "text-white hover:bg-white/20 hover:text-white" : ""}>
                   <Menu className="h-5 w-5" />
                   <span className="sr-only">Toggle Menu</span>
                 </Button>
@@ -136,7 +136,7 @@ export function Header() {
                  <Link href="/" className="flex items-center gap-2 mb-6" onClick={(e) => { setOpen(false); scrollToTop(e); }}>
                     <Image
                       src="/assets/header.svg"
-                      alt="Elimar Spring Garden"
+                      alt="Elimar Spring Garden Resort"
                       width={100}
                       height={20}
                     />
@@ -166,7 +166,7 @@ export function Header() {
              <Link href="/" className="flex items-center" onClick={scrollToTop}>
                 <Image
                   src="/assets/header.svg"
-                  alt="Elimar Spring Garden"
+                  alt="Elimar Spring Garden Resort"
                   width={100}
                   height={20}
                   priority
@@ -175,10 +175,13 @@ export function Header() {
         </div>
         
         <div className="flex-1 flex items-center justify-end gap-3">
-          <ThemeToggle />
+          <ThemeToggle className={!isScrolled && isHomePage ? "text-white hover:bg-white/20 hover:text-white" : ""} />
           {isLoggedIn ? (
             <>
-              <span className="text-sm text-muted-foreground hidden sm:inline">
+              <span className={cn(
+                "text-sm hidden sm:inline transition-colors",
+                !isScrolled && isHomePage ? "text-white" : "text-muted-foreground"
+              )}>
                 Welcome, {userName}
               </span>
               <Button 

@@ -51,7 +51,7 @@ function MainPageLayout({ children }: { children: React.ReactNode }) {
       <main className="flex-1">{children}</main>
       
       {/* Enhanced Footer with curved divider */}
-      <footer className="relative bg-gradient-to-br from-primary via-primary to-primary/90 text-primary-foreground mt-28 md:mt-36">
+      <footer className="relative bg-gradient-to-br from-primary via-primary to-primary/90 text-primary-foreground mt-28 md:mt-36 overflow-hidden">
         {/* Curved divider */}
         <div className="absolute top-0 left-0 right-0 overflow-hidden -mt-1">
           <svg
@@ -72,7 +72,7 @@ function MainPageLayout({ children }: { children: React.ReactNode }) {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-12 md:gap-16 mb-12">
             {/* Column 1 - Brand */}
             <div className="flex flex-col gap-4">
-              <h3 className="font-bold font-headline text-2xl mb-2">Elimar Spring Garden</h3>
+              <h3 className="font-bold font-headline text-2xl mb-2">Elimar Spring Garden Resort</h3>
               <p className="text-base text-primary-foreground/90 leading-relaxed">
                 A sanctuary of peace and tranquility where nature meets luxury. Experience unforgettable moments in paradise.
               </p>
@@ -150,7 +150,7 @@ function MainPageLayout({ children }: { children: React.ReactNode }) {
           {/* Copyright */}
           <div className="pt-8 border-t border-primary-foreground/20 text-center">
             <p className="text-sm text-primary-foreground/80">
-              &copy; {new Date().getFullYear()} Elimar Spring Garden. All rights reserved.
+              &copy; {new Date().getFullYear()} Elimar Spring Garden Resort. All rights reserved.
             </p>
           </div>
         </div>
@@ -173,7 +173,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning className={!isAuthPage && !isAdminPage ? "scroll-smooth" : ""}>
       <head>
-        <title>{`${isAdminPage ? 'Admin - ' : ''}Elimar Spring Garden`}</title>
+        <title>{`${isAdminPage ? 'Admin - ' : ''}Elimar Spring Garden Resort`}</title>
         <meta name="description" content="A serene resort nestled in nature. Book your escape." />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />

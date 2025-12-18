@@ -16,11 +16,14 @@ import { Label } from "./ui/label"
 import { Input } from "./ui/input"
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover"
 import { Calendar as CalendarComponent } from "./ui/calendar"
-import { Calendar, Loader2, Sparkles, Info, AlertCircle } from "lucide-react"
+import { Calendar, Loader2, Sparkles, Info, AlertCircle, FileText, X } from "lucide-react"
 import { API_URL } from "@/lib/utils";
-import Swal from 'sweetalert2';
+import { toast } from "@/hooks/use-toast";
 import { useAvailability } from "@/hooks/use-availability";
 import { Alert, AlertDescription } from "./ui/alert";
+
+import { Checkbox } from "./ui/checkbox"
+import { ScrollArea } from "./ui/scroll-area"
 
 interface EventBookingModalProps {
   isOpen: boolean
@@ -55,6 +58,10 @@ export default function EventBookingModal({ isOpen, onClose }: EventBookingModal
   // Dynamic pricing state
   const [pricing, setPricing] = useState<DynamicPricing | null>(null)
   const [loadingPricing, setLoadingPricing] = useState(true)
+  
+  // Terms and Conditions state
+  const [showTermsModal, setShowTermsModal] = useState(false)
+  const [acceptedTerms, setAcceptedTerms] = useState(false)
 
   // Fetch dynamic pricing on mount
   useEffect(() => {
@@ -168,11 +175,9 @@ export default function EventBookingModal({ isOpen, onClose }: EventBookingModal
       sessionStorage.setItem('pendingEventBooking', JSON.stringify(bookingData))
       
       // Redirect to signup/login
-      Swal.fire({
+      toast({
         title: "Login Required",
-        text: "Please sign up or log in to complete your event booking",
-        icon: "info",
-        confirmButtonColor: "#3b82f6",
+        description: "Please sign up or log in to complete your event booking",
       });
       router.push('/signup')
       return
@@ -180,21 +185,19 @@ export default function EventBookingModal({ isOpen, onClose }: EventBookingModal
 
     // Validate required fields
     if (!selectedEvent || !bookingDate) {
-      Swal.fire({
+      toast({
         title: "Missing Information",
-        text: "Please select an event type and booking date",
-        icon: "warning",
-        confirmButtonColor: "#f59e0b",
+        description: "Please select an event type and booking date",
+        variant: "destructive",
       });
       return;
     }
 
     if (!proofOfPayment) {
-      Swal.fire({
+      toast({
         title: "Payment Proof Required",
-        text: "Please upload proof of payment to proceed",
-        icon: "warning",
-        confirmButtonColor: "#f59e0b",
+        description: "Please upload proof of payment to proceed",
+        variant: "destructive",
       });
       return;
     }
@@ -233,11 +236,9 @@ export default function EventBookingModal({ isOpen, onClose }: EventBookingModal
         throw new Error(result.message || 'Failed to create event booking');
       }
 
-      Swal.fire({
+      toast({
         title: "Booking Submitted Successfully! 🎉",
-        text: `Your event booking for ₱${totalPrice.toLocaleString('en-PH')} has been submitted. Please wait for admin confirmation.`,
-        icon: "success",
-        confirmButtonColor: "#10b981",
+        description: `Your event booking for ₱${totalPrice.toLocaleString('en-PH')} has been submitted. Please wait for admin confirmation.`,
       });
       
       handleClose();
@@ -246,11 +247,10 @@ export default function EventBookingModal({ isOpen, onClose }: EventBookingModal
       setTimeout(() => window.location.reload(), 1000);
     } catch (error: any) {
       console.error('Event booking error:', error);
-      Swal.fire({
+      toast({
         title: "Booking Failed",
-        text: error.message || 'Failed to book event. Please try again.',
-        icon: "error",
-        confirmButtonColor: "#ef4444",
+        description: error.message || 'Failed to book event. Please try again.',
+        variant: "destructive",
       });
     } finally {
       setIsSubmitting(false);
@@ -263,6 +263,7 @@ export default function EventBookingModal({ isOpen, onClose }: EventBookingModal
     setProofOfPayment(null)
     setProofOfPaymentPreview(null)
     setEventDetails("")
+    setAcceptedTerms(false)
   }
 
   const handleClose = () => {
@@ -465,14 +466,14 @@ export default function EventBookingModal({ isOpen, onClose }: EventBookingModal
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Left: QR Code */}
                 <div className="flex flex-col items-center justify-center p-6 border rounded-lg bg-muted">
-                  <div className="w-48 h-48 bg-white rounded-lg flex items-center justify-center mb-4 border-2">
-                    <div className="text-center p-4">
-                      <div className="w-40 h-40 bg-gradient-to-br from-blue-100 to-blue-200 rounded flex flex-col items-center justify-center mb-2">
-                        <span className="text-4xl mb-2">💳</span>
-                        <span className="text-xs font-medium text-gray-600">Payment QR Code</span>
-                        <span className="text-xs text-gray-500 mt-1">GCash / PayMaya</span>
-                      </div>
-                    </div>
+                  <div className="w-48 h-48 bg-white rounded-lg flex items-center justify-center mb-4 border-2 overflow-hidden">
+                    <Image
+                      src="/assets/payment-qr.png"
+                      alt="Payment QR Code"
+                      width={180}
+                      height={180}
+                      className="object-contain"
+                    />
                   </div>
                   <p className="text-sm text-center text-muted-foreground font-medium">
                     Scan to pay via GCash or PayMaya
@@ -534,6 +535,26 @@ export default function EventBookingModal({ isOpen, onClose }: EventBookingModal
             )}
           </div>
 
+          {/* Terms and Conditions */}
+          <div className="flex items-start gap-2 py-2">
+            <Checkbox
+              id="event-terms"
+              checked={acceptedTerms}
+              onCheckedChange={(checked) => setAcceptedTerms(checked as boolean)}
+            />
+            <label htmlFor="event-terms" className="text-sm text-muted-foreground leading-tight">
+              I have read and agree to the{" "}
+              <button
+                type="button"
+                onClick={() => setShowTermsModal(true)}
+                className="text-primary hover:underline font-medium"
+              >
+                Terms and Conditions
+              </button>
+              {" "}for event bookings.
+            </label>
+          </div>
+
           {/* Book Now Button */}
           <Button 
             onClick={handleBookEvent} 
@@ -544,7 +565,8 @@ export default function EventBookingModal({ isOpen, onClose }: EventBookingModal
               !proofOfPayment || 
               isSubmitting || 
               checkingAvailability ||
-              !isAvailable
+              !isAvailable ||
+              !acceptedTerms
             }
           >
             {isSubmitting ? (
@@ -584,8 +606,91 @@ export default function EventBookingModal({ isOpen, onClose }: EventBookingModal
               This date and time slot is not available. Please select another date or time slot.
             </p>
           )}
+          {selectedEvent && bookingDate && proofOfPayment && isAvailable && !acceptedTerms && (
+            <p className="text-sm text-center text-muted-foreground mt-2">
+              Please accept the Terms and Conditions to proceed
+            </p>
+          )}
         </div>
       </DialogContent>
+
+      {/* Terms and Conditions Modal */}
+      <Dialog open={showTermsModal} onOpenChange={setShowTermsModal}>
+        <DialogContent className="max-w-2xl max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Terms and Conditions - Event Booking
+            </DialogTitle>
+            <DialogDescription>
+              Please read these terms and conditions carefully before booking an event.
+            </DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="h-[50vh] pr-4">
+            <div className="space-y-4 text-sm">
+              <section>
+                <h3 className="font-semibold text-base mb-2">1. Booking and Reservation</h3>
+                <p className="text-muted-foreground">
+                  Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. All event bookings are subject to availability and confirmation by Elimar Spring Garden Resort management.
+                </p>
+              </section>
+              
+              <section>
+                <h3 className="font-semibold text-base mb-2">2. Payment Terms</h3>
+                <p className="text-muted-foreground">
+                  Lorem ipsum dolor sit amet, consectetur adipiscing elit. A non-refundable deposit of 50% of the total event fee is required to secure your booking. The remaining balance must be paid at least 7 days before the event date. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
+                </p>
+              </section>
+              
+              <section>
+                <h3 className="font-semibold text-base mb-2">3. Cancellation Policy</h3>
+                <p className="text-muted-foreground">
+                  Lorem ipsum dolor sit amet, consectetur adipiscing elit. Cancellations made more than 30 days before the event will receive a 50% refund of the deposit. Cancellations made within 30 days of the event date will forfeit the entire deposit. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+                </p>
+              </section>
+              
+              <section>
+                <h3 className="font-semibold text-base mb-2">4. Event Guidelines</h3>
+                <p className="text-muted-foreground">
+                  Lorem ipsum dolor sit amet, consectetur adipiscing elit. The event organizer is responsible for ensuring all guests comply with resort rules and regulations. Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium. Any damage to resort property will be charged to the event organizer.
+                </p>
+              </section>
+              
+              <section>
+                <h3 className="font-semibold text-base mb-2">5. Liability</h3>
+                <p className="text-muted-foreground">
+                  Lorem ipsum dolor sit amet, consectetur adipiscing elit. Elimar Spring Garden Resort shall not be held liable for any injuries, accidents, or loss of personal belongings during the event. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit. Event organizers are advised to secure their own event insurance.
+                </p>
+              </section>
+              
+              <section>
+                <h3 className="font-semibold text-base mb-2">6. Force Majeure</h3>
+                <p className="text-muted-foreground">
+                  Lorem ipsum dolor sit amet, consectetur adipiscing elit. In the event of circumstances beyond our control (natural disasters, government restrictions, etc.), the resort reserves the right to reschedule or cancel the event. Quis autem vel eum iure reprehenderit qui in ea voluptate velit esse quam nihil molestiae consequatur.
+                </p>
+              </section>
+              
+              <section>
+                <h3 className="font-semibold text-base mb-2">7. Amendments</h3>
+                <p className="text-muted-foreground">
+                  Lorem ipsum dolor sit amet, consectetur adipiscing elit. These terms and conditions may be amended at any time without prior notice. At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium voluptatum deleniti atque corrupti quos dolores.
+                </p>
+              </section>
+            </div>
+          </ScrollArea>
+          <div className="flex justify-end gap-2 pt-4 border-t">
+            <Button variant="outline" onClick={() => setShowTermsModal(false)}>
+              Close
+            </Button>
+            <Button onClick={() => {
+              setAcceptedTerms(true)
+              setShowTermsModal(false)
+            }}>
+              I Accept
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   )
 }

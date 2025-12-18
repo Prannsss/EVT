@@ -7,10 +7,10 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, CheckCircle, Turtle } from 'lucide-react';
+import { Loader2, CheckCircle, Turtle, ArrowLeft } from 'lucide-react';
 import { API_URL } from '@/lib/utils';
-import Swal from 'sweetalert2';
 import AuthCarousel from '@/components/AuthCarousel';
+import { toast } from '@/hooks/use-toast';
 
 function LoginForm() {
   const router = useRouter();
@@ -20,6 +20,7 @@ function LoginForm() {
   const [error, setError] = useState('');
   const [showVerifiedMessage, setShowVerifiedMessage] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -29,11 +30,10 @@ function LoginForm() {
     // Check if user was redirected after email verification
     if (searchParams.get('verified') === 'true') {
       setShowVerifiedMessage(true);
-      Swal.fire({
+      toast({
         title: "Email Verified! ✓",
-        text: "Your email has been verified successfully. You can now log in.",
-        icon: "success",
-        confirmButtonColor: "#10b981",
+        description: "Your email has been verified successfully. You can now log in.",
+        variant: "default",
       });
       // Hide message after 5 seconds
       setTimeout(() => setShowVerifiedMessage(false), 5000);
@@ -68,53 +68,63 @@ function LoginForm() {
         localStorage.setItem('token', data.data.token);
         localStorage.setItem('user', JSON.stringify(data.data.user));
 
-        Swal.fire({
-          title: "Login Successful! ✓",
-          text: `Welcome back, ${data.data.user.name}!`,
-          icon: "success",
-          confirmButtonColor: "#10b981",
-        });
+        // Show redirecting state
+        setIsLoading(false);
+        setIsRedirecting(true);
 
         // Redirect based on role
-        setTimeout(() => {
-          if (data.data.user.role === 'admin') {
-            router.push('/admin/dashboard');
-          } else {
-            router.push('/client/accommodations');
-          }
-        }, 500);
+        if (data.data.user.role === 'admin') {
+          router.push('/admin/dashboard');
+        } else {
+          router.push('/client/accommodations');
+        }
       } else {
         setError(data.message || 'Invalid email or password');
-        Swal.fire({
+        toast({
           title: "Login Failed",
-          text: data.message || 'Invalid email or password',
-          icon: "error",
-          confirmButtonColor: "#ef4444",
+          description: data.message || 'Invalid email or password',
+          variant: "destructive",
         });
       }
     } catch (err: any) {
       setError('Failed to login. Please try again.');
-      Swal.fire({
+      toast({
         title: "Login Error",
-        text: 'Failed to login. Please check your connection and try again.',
-        icon: "error",
-        confirmButtonColor: "#ef4444",
+        description: 'Failed to login. Please check your connection and try again.',
+        variant: "destructive",
       });
     } finally {
       setIsLoading(false);
     }
   };
 
+  // Show redirecting screen
+  if (isRedirecting) {
+    return (
+      <div className="w-full h-screen flex flex-col items-center justify-center bg-background">
+        <Loader2 className="w-12 h-12 animate-spin text-primary mb-4" />
+        <p className="text-lg font-medium text-muted-foreground">Redirecting...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full h-screen lg:grid lg:grid-cols-2">
       <div className="flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 h-full bg-background">
         <div className="mx-auto grid w-[400px] gap-6">
           <div className="grid gap-2">
+            <Link 
+              href="/" 
+              className="flex items-center gap-1 text-sm text-muted-foreground hover:text-primary transition-colors w-fit mb-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back to Home
+            </Link>
             <Link href="/" className="flex items-center gap-2 mb-2 hover:opacity-80 transition-opacity w-fit">
               <Turtle className="h-6 w-6 text-primary" />
               <span className="font-semibold text-primary">Elimar Spring Garden Resort</span>
             </Link>
-            <h1 className="text-3xl font-bold">Holla, Welcome Back</h1>
+            <h1 className="text-3xl font-bold">Welcome Back!</h1>
             <p className="text-balance text-muted-foreground">
               Hey, welcome back to your special place
             </p>

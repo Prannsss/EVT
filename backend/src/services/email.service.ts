@@ -60,7 +60,7 @@ interface CheckOutEmailData {
 export const sendVerificationCodeEmail = async (
   data: VerificationEmailData
 ): Promise<boolean> => {
-  const subject = 'Email Verification Code - Elimar Spring Garden';
+  const subject = 'Email Verification Code - Elimar Spring Garden Resort';
   const html = `
     <!DOCTYPE html>
     <html>
@@ -108,7 +108,7 @@ export const sendVerificationCodeEmail = async (
         </div>
         <div class="content">
           <p>Dear ${data.name},</p>
-          <p>Welcome to Elimar Spring Garden! To complete your registration, please verify your email address using the code below:</p>
+          <p>Welcome to Elimar Spring Garden Resort! To complete your registration, please verify your email address using the code below:</p>
           
           <div class="code-box">
             <p style="margin: 0; font-size: 14px; color: #666;">Your Verification Code</p>
@@ -127,11 +127,11 @@ export const sendVerificationCodeEmail = async (
           
           <p>If you didn't request this verification code, please ignore this email or contact our support team if you have concerns.</p>
           
-          <p>Best regards,<br>${env.EMAIL_FROM_NAME || 'Elimar Spring Garden Team'}</p>
+          <p>Best regards,<br>${env.EMAIL_FROM_NAME || 'Elimar Spring Garden Resort Team'}</p>
         </div>
         <div class="footer">
           <p>This is an automated message, please do not reply.</p>
-          <p>&copy; ${new Date().getFullYear()} Elimar Spring Garden. All rights reserved.</p>
+          <p>&copy; ${new Date().getFullYear()} Elimar Spring Garden Resort. All rights reserved.</p>
         </div>
       </div>
     </body>
@@ -239,7 +239,7 @@ export const sendAdminInvitationEmail = async (
         </div>
         <div class="footer">
           <p>This is an automated message, please do not reply.</p>
-          <p>&copy; ${new Date().getFullYear()} Elimar Spring Garden. All rights reserved.</p>
+          <p>&copy; ${new Date().getFullYear()} Elimar Spring Garden Resort. All rights reserved.</p>
         </div>
       </div>
     </body>
@@ -276,7 +276,7 @@ export const sendAdminInvitationEmail = async (
 export const sendPasswordResetEmail = async (
   data: PasswordResetData
 ): Promise<boolean> => {
-  const subject = 'Password Reset - Elimar Spring Garden';
+  const subject = 'Password Reset - Elimar Spring Garden Resort';
   const html = `
     <!DOCTYPE html>
     <html>
@@ -347,7 +347,7 @@ export const sendPasswordResetEmail = async (
         </div>
         <div class="footer">
           <p>This is an automated message, please do not reply.</p>
-          <p>&copy; ${new Date().getFullYear()} Elimar Spring Garden. All rights reserved.</p>
+          <p>&copy; ${new Date().getFullYear()} Elimar Spring Garden Resort. All rights reserved.</p>
         </div>
       </div>
     </body>

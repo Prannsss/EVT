@@ -38,7 +38,7 @@ import {
   Users,
 } from "lucide-react";
 import { API_URL } from '@/lib/utils';
-import Swal from 'sweetalert2';
+import { toast } from '@/hooks/use-toast';
 
 interface Booking {
   id: number;
@@ -180,11 +180,10 @@ export default function BookingsPage() {
       setSelectedBooking(bookingData);
       setIsDetailsModalOpen(true);
     } catch (err) {
-      Swal.fire({
+      toast({
         title: "Error",
-        text: "Failed to load booking details",
-        icon: "error",
-        confirmButtonColor: "#ef4444",
+        description: "Failed to load booking details",
+        variant: "destructive",
       });
     }
   };
@@ -210,24 +209,21 @@ export default function BookingsPage() {
         throw new Error(data.message || 'Failed to approve booking');
       }
 
-      Swal.fire({
+      toast({
         title: "Success",
-        text: isEventBooking 
+        description: isEventBooking 
           ? "Event booking approved successfully" 
           : "Booking approved successfully",
-        icon: "success",
-        confirmButtonColor: "#10b981",
       });
 
       setIsApproveModalOpen(false);
       setActionBooking(null);
       await fetchBookings();
     } catch (err) {
-      Swal.fire({
+      toast({
         title: "Error",
-        text: err instanceof Error ? err.message : 'Failed to approve booking',
-        icon: "error",
-        confirmButtonColor: "#ef4444",
+        description: err instanceof Error ? err.message : 'Failed to approve booking',
+        variant: "destructive",
       });
     }
   };
@@ -253,24 +249,21 @@ export default function BookingsPage() {
         throw new Error(data.message || 'Failed to reject booking');
       }
 
-      Swal.fire({
+      toast({
         title: "Success",
-        text: isEventBooking 
+        description: isEventBooking 
           ? "Event booking rejected successfully" 
           : "Booking rejected successfully",
-        icon: "success",
-        confirmButtonColor: "#10b981",
       });
 
       setIsRejectModalOpen(false);
       setActionBooking(null);
       await fetchBookings();
     } catch (err) {
-      Swal.fire({
+      toast({
         title: "Error",
-        text: err instanceof Error ? err.message : 'Failed to reject booking',
-        icon: "error",
-        confirmButtonColor: "#ef4444",
+        description: err instanceof Error ? err.message : 'Failed to reject booking',
+        variant: "destructive",
       });
     }
   };
@@ -296,24 +289,21 @@ export default function BookingsPage() {
         throw new Error(data.message || 'Failed to check out booking');
       }
 
-      Swal.fire({
+      toast({
         title: "Success",
-        text: isEventBooking 
+        description: isEventBooking 
           ? "Event checked out successfully. Resort is now available." 
           : "Guest checked out successfully. Accommodation is now available.",
-        icon: "success",
-        confirmButtonColor: "#10b981",
       });
 
       setIsCheckOutModalOpen(false);
       setActionBooking(null);
       await fetchBookings();
     } catch (err) {
-      Swal.fire({
+      toast({
         title: "Error",
-        text: err instanceof Error ? err.message : 'Failed to check out',
-        icon: "error",
-        confirmButtonColor: "#ef4444",
+        description: err instanceof Error ? err.message : 'Failed to check out',
+        variant: "destructive",
       });
     }
   };
@@ -343,20 +333,17 @@ export default function BookingsPage() {
         throw new Error(data.message || 'Failed to delete booking');
       }
 
-      Swal.fire({
+      toast({
         title: "Success",
-        text: "Booking deleted successfully",
-        icon: "success",
-        confirmButtonColor: "#10b981",
+        description: "Booking deleted successfully",
       });
 
       await fetchBookings();
     } catch (err) {
-      Swal.fire({
+      toast({
         title: "Error",
-        text: err instanceof Error ? err.message : 'Failed to delete booking',
-        icon: "error",
-        confirmButtonColor: "#ef4444",
+        description: err instanceof Error ? err.message : 'Failed to delete booking',
+        variant: "destructive",
       });
     }
   };

@@ -16,7 +16,7 @@ import {
   Calendar,
   Moon
 } from 'lucide-react';
-import Swal from 'sweetalert2';
+import { toast } from '@/hooks/use-toast';
 import { API_URL } from '@/lib/utils';
 
 interface PricingSetting {
@@ -153,21 +153,18 @@ export default function SettingsPage() {
         throw new Error(data.message || 'Failed to update pricing');
       }
 
-      Swal.fire({
+      toast({
         title: 'Success',
-        text: 'Pricing updated successfully',
-        icon: 'success',
-        confirmButtonColor: '#10b981',
+        description: 'Pricing updated successfully',
       });
 
       setIsEditing(false);
       await fetchPricing();
     } catch (err) {
-      Swal.fire({
+      toast({
         title: 'Error',
-        text: err instanceof Error ? err.message : 'Failed to update pricing',
-        icon: 'error',
-        confirmButtonColor: '#ef4444',
+        description: err instanceof Error ? err.message : 'Failed to update pricing',
+        variant: 'destructive',
       });
     } finally {
       setSaving(false);

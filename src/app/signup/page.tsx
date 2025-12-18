@@ -6,9 +6,9 @@ import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Checkbox } from '../../components/ui/checkbox';
-import { Loader2, Turtle } from 'lucide-react';
+import { Loader2, Turtle, ArrowLeft } from 'lucide-react';
 import { API_URL } from '@/lib/utils';
-import Swal from 'sweetalert2';
+import { toast } from '@/hooks/use-toast';
 import LegalModal from '@/components/LegalModal';
 import AuthCarousel from '@/components/AuthCarousel';
 
@@ -56,33 +56,30 @@ export default function SignupPage() {
 
     if (!formData.acceptTerms) {
       setError('Please accept the terms and conditions');
-      Swal.fire({
+      toast({
         title: "Terms Required",
-        text: "Please accept the terms and conditions to continue",
-        icon: "warning",
-        confirmButtonColor: "#f59e0b",
+        description: "Please accept the terms and conditions to continue",
+        variant: "destructive",
       });
       return;
     }
 
     if (formData.password.length < 6) {
       setError('Password must be at least 6 characters');
-      Swal.fire({
+      toast({
         title: "Invalid Password",
-        text: "Password must be at least 6 characters long",
-        icon: "error",
-        confirmButtonColor: "#ef4444",
+        description: "Password must be at least 6 characters long",
+        variant: "destructive",
       });
       return;
     }
 
     if (!validatePhoneNumber(formData.contactNumber)) {
       setError('Please enter a valid Philippine phone number (e.g., 09078845654 or +639078845654)');
-      Swal.fire({
+      toast({
         title: "Invalid Phone Number",
-        text: "Please enter a valid Philippine phone number",
-        icon: "error",
-        confirmButtonColor: "#ef4444",
+        description: "Please enter a valid Philippine phone number",
+        variant: "destructive",
       });
       return;
     }
@@ -110,22 +107,19 @@ export default function SignupPage() {
         throw new Error(data.message || 'Failed to register');
       }
 
-      Swal.fire({
+      toast({
         title: "Registration Successful! ✓",
-        text: "Please check your email to verify your account",
-        icon: "success",
-        confirmButtonColor: "#10b981",
+        description: "Please check your email to verify your account",
       });
 
       // Redirect to verification page
       router.push(`/verify-email?email=${encodeURIComponent(formData.email)}&name=${encodeURIComponent(fullName)}`);
     } catch (err: any) {
       setError(err.message || 'Failed to register. Please try again.');
-      Swal.fire({
+      toast({
         title: "Registration Failed",
-        text: err.message || 'Failed to register. Please try again.',
-        icon: "error",
-        confirmButtonColor: "#ef4444",
+        description: err.message || 'Failed to register. Please try again.',
+        variant: "destructive",
       });
     } finally {
       setIsLoading(false);
@@ -137,6 +131,13 @@ export default function SignupPage() {
       <div className="flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 h-full bg-background">
         <div className="mx-auto grid w-[400px] gap-6">
           <div className="grid gap-2">
+            <Link 
+              href="/" 
+              className="flex items-center gap-1 text-sm text-muted-foreground hover:text-primary transition-colors w-fit mb-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back to Home
+            </Link>
             <Link href="/" className="flex items-center gap-2 mb-2 hover:opacity-80 transition-opacity w-fit">
               <Turtle className="h-6 w-6 text-primary" />
               <span className="font-semibold text-primary">Elimar Spring Garden Resort</span>

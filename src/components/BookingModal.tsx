@@ -23,7 +23,7 @@ import { Calendar as CalendarComponent } from "./ui/calendar"
 import { Plus, Minus, Clock, Calendar, Loader2, AlertCircle, Info, Droplet, Sparkles, Check } from "lucide-react"
 import Accommodation3D from "./Accommodation3D"
 import { API_URL } from "@/lib/utils";
-import Swal from 'sweetalert2';
+import { toast } from "@/hooks/use-toast";
 import { useAvailability } from "@/hooks/use-availability";
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
 import BookingConfirmationModal from "./BookingConfirmationModal";
@@ -355,11 +355,9 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
       sessionStorage.setItem('pendingBooking', JSON.stringify(bookingData))
       
       // Redirect to signup/login
-      Swal.fire({
+      toast({
         title: "Login Required",
-        text: "Please sign up or log in to complete your booking",
-        icon: "info",
-        confirmButtonColor: "#3b82f6",
+        description: "Please sign up or log in to complete your booking",
       });
       router.push('/signup')
       return
@@ -367,31 +365,28 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
 
     // Validate required fields
     if (!bookingDate) {
-      Swal.fire({
+      toast({
         title: "Missing Information",
-        text: "Please select a booking date",
-        icon: "warning",
-        confirmButtonColor: "#f59e0b",
+        description: "Please select a booking date",
+        variant: "destructive",
       });
       return
     }
 
     if (adultCount + kidCount + pwdCount + seniorCount === 0) {
-      Swal.fire({
+      toast({
         title: "Missing Information",
-        text: "Please add at least one guest",
-        icon: "warning",
-        confirmButtonColor: "#f59e0b",
+        description: "Please add at least one guest",
+        variant: "destructive",
       });
       return
     }
 
     if (!proofOfPayment) {
-      Swal.fire({
+      toast({
         title: "Payment Proof Required",
-        text: "Please upload proof of payment to proceed",
-        icon: "warning",
-        confirmButtonColor: "#f59e0b",
+        description: "Please upload proof of payment to proceed",
+        variant: "destructive",
       });
       return
     }
@@ -445,11 +440,9 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
         throw new Error(data.message || 'Failed to create booking')
       }
 
-      Swal.fire({
+      toast({
         title: "Booking Submitted Successfully! 🎉",
-        text: `Your booking for ₱${totalPrice.toLocaleString('en-PH')} has been submitted. Please wait for admin confirmation.`,
-        icon: "success",
-        confirmButtonColor: "#10b981",
+        description: `Your booking for ₱${totalPrice.toLocaleString('en-PH')} has been submitted. Please wait for admin confirmation.`,
       });
       
       // Close both modals
@@ -460,11 +453,10 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
       setTimeout(() => router.push('/client/accommodations'), 1000)
     } catch (error) {
       console.error('Booking error:', error)
-      Swal.fire({
+      toast({
         title: "Booking Failed",
-        text: error instanceof Error ? error.message : 'Failed to submit booking. Please try again.',
-        icon: "error",
-        confirmButtonColor: "#ef4444",
+        description: error instanceof Error ? error.message : 'Failed to submit booking. Please try again.',
+        variant: "destructive",
       });
     } finally {
       setIsSubmitting(false)
@@ -1167,15 +1159,14 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Left: QR Code */}
               <div className="flex flex-col items-center justify-center p-6 border rounded-lg bg-muted">
-                <div className="w-48 h-48 bg-white rounded-lg flex items-center justify-center mb-4 border-2">
-                  {/* Placeholder for QR Code - Replace /assets/payment-qr.png with actual QR code image */}
-                  <div className="text-center p-4">
-                    <div className="w-40 h-40 bg-gradient-to-br from-blue-100 to-blue-200 rounded flex flex-col items-center justify-center mb-2">
-                      <span className="text-4xl mb-2">💳</span>
-                      <span className="text-xs font-medium text-gray-600">Payment QR Code</span>
-                      <span className="text-xs text-gray-500 mt-1">GCash / PayMaya</span>
-                    </div>
-                  </div>
+                <div className="w-48 h-48 bg-white rounded-lg flex items-center justify-center mb-4 border-2 overflow-hidden">
+                  <Image
+                    src="/assets/payment-qr.png"
+                    alt="Payment QR Code"
+                    width={180}
+                    height={180}
+                    className="object-contain"
+                  />
                 </div>
                 <p className="text-sm text-center text-muted-foreground font-medium">
                   Scan to pay via GCash or PayMaya

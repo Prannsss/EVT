@@ -21,7 +21,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { FileText, Download, Loader2, Plus, Trash2 } from 'lucide-react';
-import Swal from 'sweetalert2';
+import { toast } from '@/hooks/use-toast';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:9002';
 
@@ -80,11 +80,10 @@ export default function ReportsPage() {
       }
     } catch (error) {
       console.error('Error fetching clients:', error);
-      Swal.fire({
+      toast({
         title: 'Error',
-        text: 'Failed to load clients',
-        icon: 'error',
-        confirmButtonColor: '#ef4444',
+        description: 'Failed to load clients',
+        variant: 'destructive',
       });
     } finally {
       setLoading(false);
@@ -122,11 +121,10 @@ export default function ReportsPage() {
       }
     } catch (error) {
       console.error('Error fetching booking:', error);
-      Swal.fire({
+      toast({
         title: 'Error',
-        text: 'Failed to fetch booking details',
-        icon: 'error',
-        confirmButtonColor: '#ef4444',
+        description: 'Failed to fetch booking details',
+        variant: 'destructive',
       });
     }
   };
@@ -172,21 +170,19 @@ export default function ReportsPage() {
 
   const handleSaveLogClick = () => {
     if (!selectedClient || !selectedBooking) {
-      Swal.fire({
+      toast({
         title: 'Error',
-        text: 'Please select a client first',
-        icon: 'error',
-        confirmButtonColor: '#ef4444',
+        description: 'Please select a client first',
+        variant: 'destructive',
       });
       return;
     }
 
     if (guestEntries.some(entry => !entry.name.trim())) {
-      Swal.fire({
+      toast({
         title: 'Error',
-        text: 'Please fill in all guest names',
-        icon: 'error',
-        confirmButtonColor: '#ef4444',
+        description: 'Please fill in all guest names',
+        variant: 'destructive',
       });
       return;
     }
@@ -196,11 +192,10 @@ export default function ReportsPage() {
 
   const handleSaveLog = async () => {
     if (!selectedBooking) {
-      Swal.fire({
+      toast({
         title: 'Error',
-        text: 'No booking selected',
-        icon: 'error',
-        confirmButtonColor: '#ef4444',
+        description: 'No booking selected',
+        variant: 'destructive',
       });
       return;
     }
@@ -221,11 +216,9 @@ export default function ReportsPage() {
       });
 
       if (response.ok) {
-        Swal.fire({
+        toast({
           title: 'Success',
-          text: 'Guest log saved successfully',
-          icon: 'success',
-          confirmButtonColor: '#10b981',
+          description: 'Guest log saved successfully',
         });
         setSelectedClient('');
         setSelectedBooking(null);
@@ -235,11 +228,10 @@ export default function ReportsPage() {
       }
     } catch (error) {
       console.error('Error saving log:', error);
-      Swal.fire({
+      toast({
         title: 'Error',
-        text: 'Failed to save guest log',
-        icon: 'error',
-        confirmButtonColor: '#ef4444',
+        description: 'Failed to save guest log',
+        variant: 'destructive',
       });
     } finally {
       setSavingLog(false);
@@ -275,20 +267,17 @@ export default function ReportsPage() {
       window.URL.revokeObjectURL(downloadUrl);
       document.body.removeChild(a);
 
-      Swal.fire({
+      toast({
         title: 'Success',
-        text: 'Report generated successfully',
-        icon: 'success',
-        confirmButtonColor: '#10b981',
+        description: 'Report generated successfully',
       });
       setIsReportModalOpen(false);
     } catch (error) {
       console.error('Error generating report:', error);
-      Swal.fire({
+      toast({
         title: 'Error',
-        text: 'Failed to generate report',
-        icon: 'error',
-        confirmButtonColor: '#ef4444',
+        description: 'Failed to generate report',
+        variant: 'destructive',
       });
     } finally {
       setGenerating(false);
