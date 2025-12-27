@@ -8,12 +8,22 @@ import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, User, Home, Users,
 import { format, addMonths, subMonths, isSameMonth, isSameDay } from 'date-fns';
 import { API_URL } from '@/lib/utils';
 
+// Time slot type and labels
+type TimeSlotType = 'morning' | 'night' | 'whole_day';
+
+const TIME_SLOT_LABELS: Record<TimeSlotType, string> = {
+  morning: 'Morning (9 AM - 5 PM)',
+  night: 'Night (5:30 PM - 8 AM)',
+  whole_day: 'Whole Day (9 AM - 8 AM)'
+};
+
 interface Booking {
   id: number;
   user_id: number;
   accommodation_id?: number;
   check_in_date: string;
   booking_time?: string;
+  time_slot?: TimeSlotType;
   check_out_date?: string;
   adults?: number;
   kids?: number;
@@ -347,19 +357,21 @@ export default function AdminCalendarPage() {
                     </p>
                     <p className="text-sm text-muted-foreground flex items-center gap-2">
                       <Clock className="w-4 h-4" />
-                      Booking Time: {selectedReservation.booking_time 
-                        ? new Date(`2000-01-01T${selectedReservation.booking_time}`).toLocaleTimeString('en-US', { 
-                            hour: '2-digit', 
-                            minute: '2-digit',
-                            hour12: true 
-                          })
-                        : selectedReservation.booking_type === 'event'
-                          ? (selectedReservation.event_type === 'whole_day' 
-                              ? '9:00 AM - 5:00 PM' 
-                              : selectedReservation.event_type === 'morning' 
-                                ? '9:00 AM - 12:00 PM' 
-                                : '1:00 PM - 5:00 PM')
-                          : '12:00 AM'}
+                      Time Slot: {selectedReservation.time_slot 
+                        ? TIME_SLOT_LABELS[selectedReservation.time_slot]
+                        : selectedReservation.booking_time 
+                          ? new Date(`2000-01-01T${selectedReservation.booking_time}`).toLocaleTimeString('en-US', { 
+                              hour: '2-digit', 
+                              minute: '2-digit',
+                              hour12: true 
+                            })
+                          : selectedReservation.booking_type === 'event'
+                            ? (selectedReservation.event_type === 'whole_day' 
+                                ? 'Whole Day (9 AM - 10 PM)' 
+                                : selectedReservation.event_type === 'morning' 
+                                  ? 'Morning (9 AM - 12 PM)' 
+                                  : 'Evening (5 PM - 10 PM)')
+                            : '9:00 AM'}
                     </p>
                   </div>
                   <div className="grid grid-cols-1 gap-4">

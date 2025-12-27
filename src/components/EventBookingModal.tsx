@@ -543,7 +543,7 @@ export default function EventBookingModal({ isOpen, onClose }: EventBookingModal
               onCheckedChange={(checked) => setAcceptedTerms(checked as boolean)}
             />
             <label htmlFor="event-terms" className="text-sm text-muted-foreground leading-tight">
-              I have read and agree to the{" "}
+              By submitting a reservation, guests acknowledge that they have read, understood, and agreed to comply with these {" "}
               <button
                 type="button"
                 onClick={() => setShowTermsModal(true)}
@@ -551,7 +551,7 @@ export default function EventBookingModal({ isOpen, onClose }: EventBookingModal
               >
                 Terms and Conditions
               </button>
-              {" "}for event bookings.
+              {" "}These policies are implemented to ensure a safe, organized, and hassle-free booking experience for all guests.
             </label>
           </div>
 
@@ -619,63 +619,70 @@ export default function EventBookingModal({ isOpen, onClose }: EventBookingModal
         <DialogContent className="max-w-2xl max-h-[80vh]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
+              <FileText className="h-5 w-5 text-primary" />
               Terms and Conditions - Event Booking
             </DialogTitle>
             <DialogDescription>
-              Please read these terms and conditions carefully before booking an event.
+              To ensure a smooth, fair, and secure booking process at Elimar Spring Garden Resort, all guests are required to comply with the following terms and conditions:
             </DialogDescription>
           </DialogHeader>
           <ScrollArea className="h-[50vh] pr-4">
             <div className="space-y-4 text-sm">
               <section>
-                <h3 className="font-semibold text-base mb-2">1. Booking and Reservation</h3>
+                <h3 className="font-semibold text-base mb-2 text-primary">1. Advance Payment Requirement</h3>
                 <p className="text-muted-foreground">
-                  Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. All event bookings are subject to availability and confirmation by Elimar Spring Garden Resort management.
+                  All bookings must be fully paid during the reservation process. Guests are required to upload a valid proof of payment directly through the booking form before submitting their reservation. Late, delayed, or partial payments are not accepted. Any reservation submitted without full payment and verified proof of payment will not be confirmed.
                 </p>
               </section>
               
               <section>
-                <h3 className="font-semibold text-base mb-2">2. Payment Terms</h3>
+                <h3 className="font-semibold text-base mb-2 text-primary">2. Upload Proof of Payment</h3>
                 <p className="text-muted-foreground">
-                  Lorem ipsum dolor sit amet, consectetur adipiscing elit. A non-refundable deposit of 50% of the total event fee is required to secure your booking. The remaining balance must be paid at least 7 days before the event date. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
+                  Guests must upload a clear and valid proof of payment, such as an official receipt, screenshot, or confirmation from the selected payment channel. The uploaded proof must match the exact amount required for the reservation. Incorrect, unclear, or mismatched proof of payment may result in the booking being invalid.
                 </p>
               </section>
               
               <section>
-                <h3 className="font-semibold text-base mb-2">3. Cancellation Policy</h3>
+                <h3 className="font-semibold text-base mb-2 text-primary">3. Incomplete or Incorrect Payment</h3>
                 <p className="text-muted-foreground">
-                  Lorem ipsum dolor sit amet, consectetur adipiscing elit. Cancellations made more than 30 days before the event will receive a 50% refund of the deposit. Cancellations made within 30 days of the event date will forfeit the entire deposit. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+                  If the submitted payment is less than the required amount or does not match the booking details, the reservation will not be processed. The guest will be notified, and the payment will either be refunded or corrected as necessary <strong>before the booking can be confirmed.</strong>
                 </p>
               </section>
               
               <section>
-                <h3 className="font-semibold text-base mb-2">4. Event Guidelines</h3>
+                <h3 className="font-semibold text-base mb-2 text-primary">4. Payment Verification for Assistance</h3>
                 <p className="text-muted-foreground">
-                  Lorem ipsum dolor sit amet, consectetur adipiscing elit. The event organizer is responsible for ensuring all guests comply with resort rules and regulations. Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium. Any damage to resort property will be charged to the event organizer.
+                  <strong>Any booking assistance or processing by resort staff will only begin after full payment</strong> and valid proof of payment have been verified. No assistance will be provided for unpaid or unverified reservations.
                 </p>
               </section>
               
               <section>
-                <h3 className="font-semibold text-base mb-2">5. Liability</h3>
+                <h3 className="font-semibold text-base mb-2 text-primary">5. Senior Citizen and PWD Discount Validation</h3>
                 <p className="text-muted-foreground">
                   Lorem ipsum dolor sit amet, consectetur adipiscing elit. Elimar Spring Garden Resort shall not be held liable for any injuries, accidents, or loss of personal belongings during the event. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit. Event organizers are advised to secure their own event insurance.
                 </p>
               </section>
               
               <section>
-                <h3 className="font-semibold text-base mb-2">6. Force Majeure</h3>
+                <h3 className="font-semibold text-base mb-2 text-primary">6. Force Majeure</h3>
                 <p className="text-muted-foreground">
-                  Lorem ipsum dolor sit amet, consectetur adipiscing elit. In the event of circumstances beyond our control (natural disasters, government restrictions, etc.), the resort reserves the right to reschedule or cancel the event. Quis autem vel eum iure reprehenderit qui in ea voluptate velit esse quam nihil molestiae consequatur.
+                  Guests who indicate Senior Citizen or PWD discounts during booking are required to present a valid Senior Citizen ID or PWD ID upon arrival at the resort. Failure to present a valid ID, or providing incorrect or misleading information, will result in the discount being revoked. Any misinformation will be discussed with the guest on-site and corrected accordingly.
                 </p>
               </section>
               
               <section>
-                <h3 className="font-semibold text-base mb-2">7. Amendments</h3>
+                <h3 className="font-semibold text-base mb-2 text-primary">7. Booking the Entire Resort</h3>
                 <p className="text-muted-foreground">
-                  Lorem ipsum dolor sit amet, consectetur adipiscing elit. These terms and conditions may be amended at any time without prior notice. At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium voluptatum deleniti atque corrupti quos dolores.
+                  Guests who wish to book the entire resort may place their reservation through the online booking system. However, due to the nature of exclusive bookings, additional arrangements and specific details—such as pricing adjustments, special requests, event requirements, and resort policies—must be discussed directly with the resort owner or authorized representative. After the online booking is submitted, the guest will be contacted by the owner, or the guest may contact the resort using the provided contact number to finalize and confirm all remaining details.
                 </p>
               </section>
+
+              <section>
+                <h3 className="font-semibold text-base mb-2 text-primary">8. Non-Refundable Payment and Rescheduling Policy</h3>
+                <p className="text-muted-foreground">
+                  All confirmed payments are non-refundable. However, if a guest is unable to arrive on the scheduled date, the resort may allow a one-time rescheduling to another available date. Rescheduling is subject to availability and must follow resort policies. Guests may contact the resort directly, or the resort may reach out to coordinate rescheduling arrangements.
+                </p>
+              </section> 
             </div>
           </ScrollArea>
           <div className="flex justify-end gap-2 pt-4 border-t">

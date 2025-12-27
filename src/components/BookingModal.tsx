@@ -17,14 +17,14 @@ import { Label } from "./ui/label"
 import { Input } from "./ui/input"
 import { Badge } from "./ui/badge"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "./ui/tabs"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select"
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover"
 import { Calendar as CalendarComponent } from "./ui/calendar"
-import { Plus, Minus, Clock, Calendar, Loader2, AlertCircle, Info, Droplet, Sparkles, Check } from "lucide-react"
+import { Plus, Minus, Clock, Calendar, Loader2, AlertCircle, Info, Droplet, Sparkles, Check, Sun, Moon } from "lucide-react"
 import Accommodation3D from "./Accommodation3D"
 import { API_URL } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
-import { useAvailability } from "@/hooks/use-availability";
+import { useAvailability, TimeSlotType } from "@/hooks/use-availability";
+import { useTimeSlotSettings } from "@/contexts/TimeSlotContext";
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
 import BookingConfirmationModal from "./BookingConfirmationModal";
 
@@ -39,6 +39,9 @@ interface Accommodation {
   inclusions: string;
   image_url: string;
   panoramic_url?: string;
+  supports_morning?: boolean;
+  supports_night?: boolean;
+  supports_whole_day?: boolean;
 }
 
 interface BookingModalProps {
@@ -67,7 +70,8 @@ interface DynamicPricing {
 
 export default function BookingModal({ accommodation, isOpen, onClose }: BookingModalProps) {
   const router = useRouter()
-  const { checkRegularAvailability, getUnavailableDates, getEventConflicts } = useAvailability()
+  const { checkRegularAvailability, getUnavailableDates, getEventConflicts, getAvailableSlots } = useAvailability()
+  const { getTimeSlotLabel, getTimeSlotDescription } = useTimeSlotSettings()
   
   const [adultCount, setAdultCount] = useState(0)
   const [kidCount, setKidCount] = useState(0)
@@ -77,24 +81,23 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
   const [kidSwimming, setKidSwimming] = useState(0)
   const [pwdSwimming, setPwdSwimming] = useState(0)
   const [seniorSwimming, setSeniorSwimming] = useState(0)
-  const [overnightStay, setOvernightStay] = useState(false)
   const [overnightSwimming, setOvernightSwimming] = useState(false)
   const [proofOfPayment, setProofOfPayment] = useState<File | null>(null)
   const [proofOfPaymentPreview, setProofOfPaymentPreview] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState("details")
   const [bookingDate, setBookingDate] = useState<Date | undefined>(undefined)
-  const [bookingTime, setBookingTime] = useState("09:00")
+  const [selectedTimeSlot, setSelectedTimeSlot] = useState<TimeSlotType | null>(null)
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   
   // Availability state
   const [unavailableDates, setUnavailableDates] = useState<string[]>([])
-  const [partiallyAvailableDates, setPartiallyAvailableDates] = useState<Map<string, string[]>>(new Map())
+  const [partiallyAvailableDates, setPartiallyAvailableDates] = useState<Map<string, TimeSlotType[]>>(new Map())
   const [availabilityMessage, setAvailabilityMessage] = useState<string | null>(null)
   const [availabilityType, setAvailabilityType] = useState<'info' | 'warning' | 'error'>('info')
   const [checkingAvailability, setCheckingAvailability] = useState(false)
-  const [availableTimeSlots, setAvailableTimeSlots] = useState<string[]>(['morning', 'afternoon', 'whole_day'])
+  const [availableTimeSlots, setAvailableTimeSlots] = useState<TimeSlotType[]>([])
   
   // Dynamic pricing state
   const [pricing, setPricing] = useState<DynamicPricing | null>(null)
@@ -168,9 +171,9 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
         setUnavailableDates(result.dates)
         
         // Store partially available dates
-        const partialMap = new Map<string, string[]>()
+        const partialMap = new Map<string, TimeSlotType[]>()
         result.partiallyAvailable.forEach(item => {
-          partialMap.set(item.date, item.availableSlots)
+          partialMap.set(item.date, item.availableSlots as TimeSlotType[])
         })
         setPartiallyAvailableDates(partialMap)
       }
@@ -184,7 +187,8 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
     const checkAvailability = async () => {
       if (!bookingDate || !accommodation) {
         setAvailabilityMessage(null)
-        setAvailableTimeSlots(['morning', 'afternoon', 'whole_day'])
+        setAvailableTimeSlots([])
+        setSelectedTimeSlot(null)
         return
       }
       
@@ -204,6 +208,7 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
           setAvailabilityMessage('⚠️ This date is reserved for a whole-day event. Please select another date.')
           setAvailabilityType('error')
           setAvailableTimeSlots([])
+          setSelectedTimeSlot(null)
           setCheckingAvailability(false)
           return
         }
@@ -212,76 +217,54 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
           setAvailabilityMessage('⚠️ This date has both morning and evening events. Please select another date.')
           setAvailabilityType('error')
           setAvailableTimeSlots([])
+          setSelectedTimeSlot(null)
           setCheckingAvailability(false)
           return
         }
-        
-        if (eventConflicts.hasMorning) {
-          setAvailabilityMessage('ℹ️ Only afternoon slot (1:00 PM - 5:00 PM) is available due to a morning event.')
-          setAvailabilityType('info')
-          setAvailableTimeSlots(['afternoon'])
-        } else if (eventConflicts.hasEvening) {
-          setAvailabilityMessage('ℹ️ Only morning slot (9:00 AM - 12:00 PM) is available due to an evening event.')
-          setAvailabilityType('info')
-          setAvailableTimeSlots(['morning'])
-        } else {
-          // No event conflicts, check regular bookings
-          const result = await checkRegularAvailability(accommodation.id, dateStr)
-          
-          if (result && !result.available) {
-            setAvailabilityMessage(`⚠️ ${result.reason || 'This date is not available'}`)
-            setAvailabilityType('error')
-            setAvailableTimeSlots([])
-          } else {
-            setAvailabilityMessage('✅ This date is available!')
-            setAvailabilityType('info')
-            setAvailableTimeSlots(['morning', 'afternoon', 'whole_day'])
-          }
+      }
+      
+      // Get available slots for this accommodation
+      const slots = await getAvailableSlots(accommodation.id, dateStr)
+      
+      if (slots && slots.length > 0) {
+        // Filter slots based on accommodation type
+        // Cottages: morning or night only
+        // Rooms: morning, night, or whole_day
+        let filteredSlots = slots
+        if (accommodation.type === 'cottage') {
+          filteredSlots = slots.filter(s => s !== 'whole_day')
         }
+        
+        if (filteredSlots.length === 0) {
+          setAvailabilityMessage('⚠️ No time slots available for this accommodation on this date.')
+          setAvailabilityType('error')
+          setAvailableTimeSlots([])
+          setSelectedTimeSlot(null)
+        } else if (filteredSlots.length < 3) {
+          setAvailabilityMessage(`Limited availability: ${filteredSlots.map(s => getTimeSlotLabel(s)).join(', ')} slot(s) available.`)
+          setAvailabilityType('info')
+          setAvailableTimeSlots(filteredSlots)
+          // Auto-select if only one slot
+          if (filteredSlots.length === 1) {
+            setSelectedTimeSlot(filteredSlots[0])
+          }
+        } else {
+          setAvailabilityMessage('✅ This date is available!')
+          setAvailabilityType('info')
+          setAvailableTimeSlots(filteredSlots)
+        }
+      } else {
+        setAvailabilityMessage('⚠️ This accommodation is fully booked for this date.')
+        setAvailabilityType('error')
+        setAvailableTimeSlots([])
+        setSelectedTimeSlot(null)
       }
       
       setCheckingAvailability(false)
     }
     
     checkAvailability()
-  }, [bookingDate, accommodation, getEventConflicts, checkRegularAvailability])
-
-  // Generate time options based on available slots
-  const timeOptions = useMemo(() => {
-    const options = []
-    
-    // Determine which hours to show based on available slots
-    const showMorning = availableTimeSlots.includes('morning') || availableTimeSlots.includes('whole_day')
-    const showAfternoon = availableTimeSlots.includes('afternoon') || availableTimeSlots.includes('whole_day')
-    
-    for (let hour = 9; hour <= 17; hour++) {
-      // Morning: 9 AM - 12 PM
-      const isMorning = hour >= 9 && hour < 13
-      // Afternoon: 1 PM - 5 PM  
-      const isAfternoon = hour >= 13 && hour <= 17
-      
-      // Skip if slot is not available
-      if ((isMorning && !showMorning) || (isAfternoon && !showAfternoon)) {
-        continue
-      }
-      
-      const time24 = `${hour.toString().padStart(2, '0')}:00`
-      const hour12 = hour > 12 ? hour - 12 : hour
-      const period = hour >= 12 ? 'PM' : 'AM'
-      const time12Format = `${hour12}:00 ${period}`
-      
-      let label = time12Format
-      if (isMorning && availableTimeSlots.includes('morning') && !availableTimeSlots.includes('whole_day')) {
-        label += ' (Morning slot only)'
-      } else if (isAfternoon && availableTimeSlots.includes('afternoon') && !availableTimeSlots.includes('whole_day')) {
-        label += ' (Afternoon slot only)'
-      }
-      
-      options.push({ value: time24, label })
-    }
-    
-    return options
-  }, [availableTimeSlots])
+  }, [bookingDate, accommodation, getEventConflicts, getAvailableSlots])
 
   // Calculate total price dynamically
   const totalPrice = useMemo(() => {
@@ -289,8 +272,8 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
 
     let total = 0
 
-    // For rooms with overnight stay, use add_price (whole day price) instead of base price
-    if (accommodation.type === 'room' && overnightStay && accommodation.add_price) {
+    // For rooms with whole_day slot, use add_price (whole day price) instead of base price
+    if (accommodation.type === 'room' && selectedTimeSlot === 'whole_day' && accommodation.add_price) {
       total += Number(accommodation.add_price)
     } else {
       // Add accommodation base price (ensure it's a number)
@@ -315,7 +298,7 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
     }
 
     return total
-  }, [accommodation, pricing, adultCount, kidCount, pwdCount, seniorCount, adultSwimming, kidSwimming, pwdSwimming, seniorSwimming, overnightSwimming, overnightStay])
+  }, [accommodation, pricing, adultCount, kidCount, pwdCount, seniorCount, adultSwimming, kidSwimming, pwdSwimming, seniorSwimming, overnightSwimming, selectedTimeSlot])
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -346,9 +329,8 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
         kids: kidCount,
         pwd: pwdCount,
         senior: seniorCount,
-        overnightStay,
+        timeSlot: selectedTimeSlot,
         overnightSwimming,
-        bookingTime,
         totalPrice,
         timestamp: new Date().toISOString()
       }
@@ -368,6 +350,15 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
       toast({
         title: "Missing Information",
         description: "Please select a booking date",
+        variant: "destructive",
+      });
+      return
+    }
+
+    if (!selectedTimeSlot) {
+      toast({
+        title: "Missing Information",
+        description: "Please select a time slot",
         variant: "destructive",
       });
       return
@@ -411,7 +402,7 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
       const localDateString = `${year}-${month}-${day}`
       
       formData.append('check_in_date', localDateString)
-      formData.append('booking_time', bookingTime + ':00') // Convert HH:mm to HH:mm:ss
+      formData.append('time_slot', selectedTimeSlot!) // Use the selected time slot
       formData.append('adults', adultCount.toString())
       formData.append('kids', kidCount.toString())
       formData.append('pwd', pwdCount.toString())
@@ -420,7 +411,7 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
       formData.append('kid_swimming', kidSwimming.toString())
       formData.append('pwd_swimming', pwdSwimming.toString())
       formData.append('senior_swimming', seniorSwimming.toString())
-      formData.append('overnight_stay', overnightStay.toString())
+      formData.append('overnight_stay', (selectedTimeSlot === 'whole_day').toString())
       formData.append('overnight_swimming', overnightSwimming.toString())
       formData.append('total_price', totalPrice.toString())
       formData.append('proof_of_payment', proofOfPayment!)
@@ -472,12 +463,12 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
     setKidSwimming(0)
     setPwdSwimming(0)
     setSeniorSwimming(0)
-    setOvernightStay(false)
     setOvernightSwimming(false)
     setProofOfPayment(null)
     setProofOfPaymentPreview(null)
     setBookingDate(undefined)
-    setBookingTime("09:00")
+    setSelectedTimeSlot(null)
+    setAvailableTimeSlots([])
     setCurrentImageIndex(0)
   }
 
@@ -925,9 +916,9 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
           <div className="mb-6">
             <h4 className="text-lg font-bold mb-4 flex items-center gap-2">
               <Clock className="h-5 w-5" />
-              Booking Time and Date
+              Booking Date & Time Slot
             </h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="booking-date" className="text-sm font-medium">
                   Select Date
@@ -982,26 +973,82 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
                   </Alert>
                 )}
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="booking-time" className="text-sm font-medium">
-                  Select Time
-                </Label>
-                <Select value={bookingTime} onValueChange={setBookingTime}>
-                  <SelectTrigger id="booking-time" className="h-11">
-                    <SelectValue placeholder="Select booking time" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {timeOptions.map((time) => (
-                      <SelectItem key={time.value} value={time.value}>
-                        {time.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  Choose your preferred arrival time
-                </p>
-              </div>
+              
+              {/* Time Slot Selection */}
+              {bookingDate && availableTimeSlots.length > 0 && (
+                <div className="space-y-3">
+                  <Label className="text-sm font-medium">
+                    Select Time Slot
+                  </Label>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {availableTimeSlots.includes('morning') && (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedTimeSlot('morning')}
+                        className={`p-4 border-2 rounded-lg transition-all flex flex-col items-center gap-2 ${
+                          selectedTimeSlot === 'morning' 
+                            ? 'border-primary bg-primary/10 ring-2 ring-primary/20' 
+                            : 'border-muted hover:border-primary/50'
+                        }`}
+                      >
+                        <Sun className={`h-6 w-6 ${selectedTimeSlot === 'morning' ? 'text-primary' : 'text-amber-500'}`} />
+                        <span className="font-semibold">{getTimeSlotLabel('morning')}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {getTimeSlotDescription('morning', accommodation?.type)}
+                        </span>
+                      </button>
+                    )}
+                    
+                    {availableTimeSlots.includes('night') && (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedTimeSlot('night')}
+                        className={`p-4 border-2 rounded-lg transition-all flex flex-col items-center gap-2 ${
+                          selectedTimeSlot === 'night' 
+                            ? 'border-primary bg-primary/10 ring-2 ring-primary/20' 
+                            : 'border-muted hover:border-primary/50'
+                        }`}
+                      >
+                        <Moon className={`h-6 w-6 ${selectedTimeSlot === 'night' ? 'text-primary' : 'text-indigo-500'}`} />
+                        <span className="font-semibold">{getTimeSlotLabel('night')}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {getTimeSlotDescription('night', accommodation?.type)}
+                        </span>
+                      </button>
+                    )}
+                    
+                    {availableTimeSlots.includes('whole_day') && accommodation?.type === 'room' && (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedTimeSlot('whole_day')}
+                        className={`p-4 border-2 rounded-lg transition-all flex flex-col items-center gap-2 ${
+                          selectedTimeSlot === 'whole_day' 
+                            ? 'border-primary bg-primary/10 ring-2 ring-primary/20' 
+                            : 'border-muted hover:border-primary/50'
+                        }`}
+                      >
+                        <div className="flex gap-1">
+                          <Sun className={`h-5 w-5 ${selectedTimeSlot === 'whole_day' ? 'text-primary' : 'text-amber-500'}`} />
+                          <Moon className={`h-5 w-5 ${selectedTimeSlot === 'whole_day' ? 'text-primary' : 'text-indigo-500'}`} />
+                        </div>
+                        <span className="font-semibold">{getTimeSlotLabel('whole_day')}</span>
+                        <span className="text-xs text-muted-foreground">{getTimeSlotDescription('whole_day', accommodation?.type)}</span>
+                        {accommodation?.add_price && (
+                          <Badge variant="secondary" className="mt-1">
+                            ₱{Number(accommodation.add_price).toLocaleString('en-PH')}
+                          </Badge>
+                        )}
+                      </button>
+                    )}
+                  </div>
+                  
+                  {!selectedTimeSlot && (
+                    <p className="text-xs text-muted-foreground">
+                      Please select a time slot for your booking
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
@@ -1009,23 +1056,6 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
           <div className="mb-6">
             <h4 className="text-lg font-semibold mb-4">Additional Options</h4>
             <div className="space-y-3">
-              {/* Overnight Stay - Only for Rooms */}
-              {accommodation.type === 'room' && accommodation.add_price && (
-                <div className="flex items-center space-x-2">
-                  <Checkbox 
-                    id="overnight-stay" 
-                    checked={overnightStay}
-                    onCheckedChange={(checked) => setOvernightStay(checked as boolean)}
-                  />
-                  <Label 
-                    htmlFor="overnight-stay" 
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                  >
-                    Overnight Stay (Whole Day - ₱{Number(accommodation.add_price).toLocaleString('en-PH')})
-                  </Label>
-                </div>
-              )}
-              
               {/* Overnight Swimming - Only for Cottages */}
               {accommodation.type === 'cottage' && (
                 <div className="flex items-center space-x-2">
@@ -1043,9 +1073,26 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
                 </div>
               )}
               
-              {/* Show message if no additional options available */}
-              {accommodation.type === 'room' && !accommodation.add_price && (
-                <p className="text-sm text-muted-foreground">No additional options available for this accommodation.</p>
+              {/* Info message about time slots */}
+              {accommodation.type === 'room' && (
+                <div className="p-3 bg-muted/50 rounded-lg">
+                  <p className="text-sm text-muted-foreground">
+                    <Info className="h-4 w-4 inline mr-2" />
+                    {selectedTimeSlot === 'whole_day' 
+                      ? `You've selected the Whole Day slot (₱${Number(accommodation.add_price || accommodation.price).toLocaleString('en-PH')}). This includes access from 9 AM to 10 PM.`
+                      : `Select "Whole Day" time slot for extended hours (9 AM - 10 PM) at ₱${Number(accommodation.add_price || accommodation.price).toLocaleString('en-PH')}.`
+                    }
+                  </p>
+                </div>
+              )}
+              
+              {accommodation.type === 'cottage' && (
+                <div className="p-3 bg-muted/50 rounded-lg">
+                  <p className="text-sm text-muted-foreground">
+                    <Info className="h-4 w-4 inline mr-2" />
+                    Cottages can be booked for Morning or Night slots.
+                  </p>
+                </div>
               )}
             </div>
           </div>
@@ -1059,10 +1106,10 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
               <div className="flex justify-between text-sm">
                 <span>
                   Accommodation ({accommodation.name})
-                  {accommodation.type === 'room' && overnightStay && accommodation.add_price && ' - Whole Day'}
+                  {selectedTimeSlot && ` - ${getTimeSlotLabel(selectedTimeSlot)}`}
                 </span>
                 <span className="font-medium">
-                  ₱{(accommodation.type === 'room' && overnightStay && accommodation.add_price 
+                  ₱{(accommodation.type === 'room' && selectedTimeSlot === 'whole_day' && accommodation.add_price 
                     ? Number(accommodation.add_price) 
                     : Number(accommodation.price)
                   ).toFixed(2)}
@@ -1233,6 +1280,7 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
             className="w-full h-12 text-lg"
             disabled={
               !bookingDate || 
+              !selectedTimeSlot ||
               adultCount + kidCount + pwdCount === 0 || 
               !proofOfPayment || 
               availabilityType === 'error' ||
@@ -1255,6 +1303,11 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
               Please select a booking date to proceed
             </p>
           )}
+          {bookingDate && !selectedTimeSlot && availableTimeSlots.length > 0 && (
+            <p className="text-sm text-center text-muted-foreground mt-2">
+              Please select a time slot to proceed
+            </p>
+          )}
           {bookingDate && (adultCount + kidCount + pwdCount === 0) && (
             <p className="text-sm text-center text-muted-foreground mt-2">
               Please add at least one guest to proceed
@@ -1265,7 +1318,7 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
               This date is not available. Please select another date.
             </p>
           )}
-          {bookingDate && !proofOfPayment && (adultCount + kidCount + pwdCount > 0) && (
+          {bookingDate && selectedTimeSlot && !proofOfPayment && (adultCount + kidCount + pwdCount > 0) && (
             <p className="text-sm text-center text-muted-foreground mt-2">
               Please upload proof of payment to proceed
             </p>

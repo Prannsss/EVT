@@ -3,6 +3,7 @@
 
 import type { Metadata } from 'next';
 import { ThemeProvider, useTheme } from '../components/theme-provider';
+import { TimeSlotProvider } from '../contexts/TimeSlotContext';
 import { Header } from '../components/header';
 import { Toaster } from '../components/ui/toaster';
 import { cn } from '../lib/utils';
@@ -181,10 +182,12 @@ export default function RootLayout({
       </head>
       <body className={cn('min-h-screen bg-background text-foreground font-body antialiased', isClientPage || (!isAuthPage && !isAdminPage) ? 'flex flex-col' : '')}>
         <ThemeProvider>
-          {isAuthPage && <AuthLayout>{children}</AuthLayout>}
-          {isAdminPage && <AdminPageLayout>{children}</AdminPageLayout>}
-          {isClientPage && <ClientPageLayout>{children}</ClientPageLayout>}
-          {!isAuthPage && !isAdminPage && !isClientPage && <MainPageLayout>{children}</MainPageLayout>}
+          <TimeSlotProvider>
+            {isAuthPage && <AuthLayout>{children}</AuthLayout>}
+            {isAdminPage && <AdminPageLayout>{children}</AdminPageLayout>}
+            {isClientPage && <ClientPageLayout>{children}</ClientPageLayout>}
+            {!isAuthPage && !isAdminPage && !isClientPage && <MainPageLayout>{children}</MainPageLayout>}
+          </TimeSlotProvider>
         </ThemeProvider>
       </body>
     </html>

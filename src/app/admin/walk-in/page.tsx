@@ -48,10 +48,13 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Edit, Trash2, Loader2, MoreVertical, UserCheck, X, Calendar, Eye, User, Home, MapPin } from 'lucide-react';
+import { Plus, Edit, Trash2, Loader2, MoreVertical, UserCheck, X, Calendar, Eye, User, Home, MapPin, Sun, Moon } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { useTimeSlotSettings } from '@/contexts/TimeSlotContext';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:9002';
+
+type TimeSlotType = 'morning' | 'night' | 'whole_day';
 
 interface Accommodation {
   id: number;
@@ -59,6 +62,7 @@ interface Accommodation {
   type: 'room' | 'cottage';
   capacity: string;
   price: number;
+  add_price: number | null;
 }
 
 interface Guest {
@@ -75,6 +79,7 @@ interface WalkInLog {
   accommodation_id: number | null;
   accommodation_name?: string;
   check_in_date: string;
+  time_slot?: TimeSlotType;
   adults: number;
   kids: number;
   pwd: number;
@@ -85,7 +90,17 @@ interface WalkInLog {
   created_by_name?: string;
 }
 
+// Helper function to get local date string in YYYY-MM-DD format
+const getLocalDateString = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 export default function WalkInPage() {
+  const { getTimeSlotLabel, getTimeSlotDescription } = useTimeSlotSettings();
   const [logs, setLogs] = useState<WalkInLog[]>([]);
   const [accommodations, setAccommodations] = useState<Accommodation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -97,23 +112,87 @@ export default function WalkInPage() {
   const [selectedLog, setSelectedLog] = useState<WalkInLog | null>(null);
   const [isCheckoutDialogOpen, setIsCheckoutDialogOpen] = useState(false);
   const [checkoutLogId, setCheckoutLogId] = useState<number | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deleteLogId, setDeleteLogId] = useState<number | null>(null);
+  const [deleteLogName, setDeleteLogName] = useState<string>('');
 
   // Guest list state
   const [guests, setGuests] = useState<Guest[]>([
     { id: crypto.randomUUID(), name: '', type: 'adult' }
   ]);
 
+  // Accommodation type state
+  const [accommodationType, setAccommodationType] = useState<'room' | 'cottage' | ''>('');
+  const [selectedTimeSlot, setSelectedTimeSlot] = useState<TimeSlotType>('morning');
+  const [availableAccommodations, setAvailableAccommodations] = useState<number[]>([]);
+  const [loadingAvailability, setLoadingAvailability] = useState(false);
+
   const [formData, setFormData] = useState({
     client_name: '',
     address: '',
     accommodation_id: '',
-    check_in_date: new Date().toISOString().split('T')[0],
+    check_in_date: getLocalDateString(),
     amount_paid: '' as string | number,
   });
 
   useEffect(() => {
     fetchData();
   }, []);
+
+  // Fetch available accommodations when date, time slot, or accommodation type changes
+  useEffect(() => {
+    const fetchAvailableAccommodations = async () => {
+      if (!formData.check_in_date || !selectedTimeSlot || !accommodationType) {
+        setAvailableAccommodations([]);
+        return;
+      }
+
+      setLoadingAvailability(true);
+      try {
+        const token = localStorage.getItem('token');
+        const params = new URLSearchParams({
+          date: formData.check_in_date,
+          time_slot: selectedTimeSlot,
+          accommodation_type: accommodationType,
+        });
+
+        console.log('Fetching availability with params:', {
+          date: formData.check_in_date,
+          time_slot: selectedTimeSlot,
+          accommodation_type: accommodationType,
+        });
+
+        const response = await fetch(
+          `${API_URL}/api/availability/available-accommodations?${params}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log('Available accommodations response:', data);
+          // Access data.data.availableAccommodationIds since response is wrapped in successResponse
+          const ids = data.data?.availableAccommodationIds || data.availableAccommodationIds || [];
+          console.log('Extracted available IDs:', ids);
+          setAvailableAccommodations(ids);
+        } else {
+          console.error('Failed to fetch available accommodations:', response.status);
+          setAvailableAccommodations([]);
+        }
+      } catch (error) {
+        console.error('Error fetching available accommodations:', error);
+        setAvailableAccommodations([]);
+      } finally {
+        setLoadingAvailability(false);
+      }
+    };
+
+    fetchAvailableAccommodations();
+  }, [formData.check_in_date, selectedTimeSlot, accommodationType]);
+
 
   const fetchData = async () => {
     try {
@@ -174,6 +253,7 @@ export default function WalkInPage() {
           ...formData,
           guest_names: guestNamesJson,
           accommodation_id: formData.accommodation_id ? parseInt(formData.accommodation_id) : null,
+          time_slot: selectedTimeSlot,
           adults: 0,
           kids: 0,
           pwd: 0,
@@ -214,6 +294,17 @@ export default function WalkInPage() {
       check_in_date: log.check_in_date,
       amount_paid: log.amount_paid || '',
     });
+
+    // Set time slot
+    setSelectedTimeSlot(log.time_slot || 'morning');
+
+    // Set accommodation type if accommodation is selected
+    if (log.accommodation_id) {
+      const acc = accommodations.find(a => a.id === log.accommodation_id);
+      if (acc) {
+        setAccommodationType(acc.type);
+      }
+    }
 
     // Parse guest_names JSON or create default guest
     try {
@@ -273,14 +364,18 @@ export default function WalkInPage() {
     }
   };
 
-  const handleDelete = async (logId: number) => {
-    if (!confirm('Are you sure you want to delete this walk-in log?')) {
-      return;
-    }
+  const openDeleteDialog = (logId: number, clientName: string) => {
+    setDeleteLogId(logId);
+    setDeleteLogName(clientName);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleDelete = async () => {
+    if (!deleteLogId) return;
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${API_URL}/api/walk_in/${logId}`, {
+      const response = await fetch(`${API_URL}/api/walk_in/${deleteLogId}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -302,17 +397,23 @@ export default function WalkInPage() {
         description: 'Failed to delete walk-in log',
         variant: 'destructive',
       });
+    } finally {
+      setIsDeleteDialogOpen(false);
+      setDeleteLogId(null);
+      setDeleteLogName('');
     }
   };
 
   const resetForm = () => {
     setEditingLog(null);
     setGuests([{ id: crypto.randomUUID(), name: '', type: 'adult' }]);
+    setAccommodationType('');
+    setSelectedTimeSlot('morning');
     setFormData({
       client_name: '',
       address: '',
       accommodation_id: '',
-      check_in_date: new Date().toISOString().split('T')[0],
+      check_in_date: getLocalDateString(),
       amount_paid: '',
     });
   };
@@ -464,25 +565,164 @@ export default function WalkInPage() {
                 </div>
 
                 <div className="col-span-2">
-                  <Label htmlFor="accommodation_id">Cottage or Room</Label>
+                  <Label htmlFor="accommodation_type">Accommodation Type</Label>
                   <Select
-                    value={formData.accommodation_id}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, accommodation_id: value })
-                    }
+                    value={accommodationType}
+                    onValueChange={(value: 'room' | 'cottage' | '') => {
+                      setAccommodationType(value);
+                      setFormData({ ...formData, accommodation_id: '' });
+                      setSelectedTimeSlot('morning');
+                    }}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select accommodation" />
+                      <SelectValue placeholder="Select type" />
                     </SelectTrigger>
                     <SelectContent>
-                      {accommodations.map((acc) => (
-                        <SelectItem key={acc.id} value={acc.id.toString()}>
-                          {acc.name} ({acc.type}) - ₱{acc.price}
-                        </SelectItem>
-                      ))}
+                      <SelectItem value="room">Room</SelectItem>
+                      <SelectItem value="cottage">Cottage</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
+
+                {/* Time Slot Selection - Show after accommodation type is selected */}
+                {accommodationType && (
+                  <div className="col-span-2">
+                    <Label className="mb-2 block">Time Slot</Label>
+                    <div className="grid grid-cols-3 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedTimeSlot('morning');
+                          // Clear accommodation selection when changing time slot
+                          setFormData(prev => ({ ...prev, accommodation_id: '' }));
+                        }}
+                        className={`p-3 border-2 rounded-lg transition-all flex flex-col items-center gap-1 ${
+                          selectedTimeSlot === 'morning' 
+                            ? 'border-primary bg-primary/10' 
+                            : 'border-muted hover:border-primary/50'
+                        }`}
+                      >
+                        <Sun className={`h-5 w-5 ${selectedTimeSlot === 'morning' ? 'text-primary' : 'text-amber-500'}`} />
+                        <span className="text-sm font-medium">{getTimeSlotLabel('morning')}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {getTimeSlotDescription('morning', accommodationType)}
+                        </span>
+                      </button>
+                      
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedTimeSlot('night');
+                          setFormData(prev => ({ ...prev, accommodation_id: '' }));
+                        }}
+                        className={`p-3 border-2 rounded-lg transition-all flex flex-col items-center gap-1 ${
+                          selectedTimeSlot === 'night' 
+                            ? 'border-primary bg-primary/10' 
+                            : 'border-muted hover:border-primary/50'
+                        }`}
+                      >
+                        <Moon className={`h-5 w-5 ${selectedTimeSlot === 'night' ? 'text-primary' : 'text-indigo-500'}`} />
+                        <span className="text-sm font-medium">{getTimeSlotLabel('night')}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {getTimeSlotDescription('night', accommodationType)}
+                        </span>
+                      </button>
+                      
+                      {/* Whole Day only for Rooms */}
+                      {accommodationType === 'room' && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedTimeSlot('whole_day');
+                            setFormData(prev => ({ ...prev, accommodation_id: '' }));
+                          }}
+                          className={`p-3 border-2 rounded-lg transition-all flex flex-col items-center gap-1 ${
+                            selectedTimeSlot === 'whole_day' 
+                              ? 'border-primary bg-primary/10' 
+                              : 'border-muted hover:border-primary/50'
+                          }`}
+                        >
+                          <div className="flex gap-0.5">
+                            <Sun className={`h-4 w-4 ${selectedTimeSlot === 'whole_day' ? 'text-primary' : 'text-amber-500'}`} />
+                            <Moon className={`h-4 w-4 ${selectedTimeSlot === 'whole_day' ? 'text-primary' : 'text-indigo-500'}`} />
+                          </div>
+                          <span className="text-sm font-medium">{getTimeSlotLabel('whole_day')}</span>
+                          <span className="text-xs text-muted-foreground">{getTimeSlotDescription('whole_day', 'room')}</span>
+                        </button>
+                      )}
+                    </div>
+                    {accommodationType === 'cottage' && (
+                      <p className="text-xs text-muted-foreground mt-2">
+                        ℹ️ Cottages: Morning and Night slots are independent (no overnight stays)
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {accommodationType && (
+                  <div className="col-span-2">
+                    <Label htmlFor="accommodation_id">
+                      {accommodationType === 'room' ? 'Select Room' : 'Select Cottage'}
+                    </Label>
+                    {/* Debug info */}
+                    {console.log('Filtering accommodations:', {
+                      allAccommodations: accommodations.map(a => ({ id: a.id, name: a.name, type: a.type })),
+                      availableIds: availableAccommodations,
+                      accommodationType,
+                      filtered: accommodations.filter(acc => 
+                        acc.type === accommodationType && 
+                        availableAccommodations.includes(acc.id)
+                      ).map(a => ({ id: a.id, name: a.name }))
+                    })}
+                    <Select
+                      value={formData.accommodation_id}
+                      onValueChange={(value) => {
+                        setFormData({ ...formData, accommodation_id: value });
+                        // Auto-calculate amount based on selection and current time slot
+                        const acc = accommodations.find(a => a.id.toString() === value);
+                        if (acc) {
+                          const price = selectedTimeSlot === 'whole_day' && acc.add_price ? acc.add_price : acc.price;
+                          setFormData(prev => ({ ...prev, accommodation_id: value, amount_paid: price }));
+                        }
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder={`Select ${accommodationType}`} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {loadingAvailability ? (
+                          <div className="p-4 text-center text-sm text-muted-foreground">
+                            Loading available accommodations...
+                          </div>
+                        ) : (
+                          <>
+                            {accommodations
+                              .filter(acc => 
+                                acc.type === accommodationType && 
+                                availableAccommodations.includes(acc.id)
+                              ).length === 0 ? (
+                                <div className="p-4 text-center text-sm text-muted-foreground">
+                                  No available {accommodationType}s for selected date and time slot
+                                </div>
+                              ) : (
+                                accommodations
+                                  .filter(acc => 
+                                    acc.type === accommodationType && 
+                                    availableAccommodations.includes(acc.id)
+                                  )
+                                  .map((acc) => (
+                                    <SelectItem key={acc.id} value={acc.id.toString()}>
+                                      {acc.name} - ₱{acc.price.toLocaleString()}
+                                      {acc.add_price && ` (Whole Day: ₱${acc.add_price.toLocaleString()})`}
+                                    </SelectItem>
+                                  ))
+                              )}
+                          </>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
 
                 <div className="col-span-2">
                   <Label htmlFor="check_in_date">Check-In Date *</Label>
@@ -493,8 +733,14 @@ export default function WalkInPage() {
                     onChange={(e) =>
                       setFormData({ ...formData, check_in_date: e.target.value })
                     }
+                    min={getLocalDateString()}
+                    max={getLocalDateString()}
                     required
+                    disabled
                   />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    ℹ️ Walk-ins can only be added for today&apos;s date
+                  </p>
                 </div>
 
                 <div className="col-span-2">
@@ -613,7 +859,7 @@ export default function WalkInPage() {
                                   Check-out
                                 </DropdownMenuItem>
                                 <DropdownMenuItem 
-                                  onClick={() => handleDelete(log.id)}
+                                  onClick={() => openDeleteDialog(log.id, log.client_name)}
                                   className="text-destructive"
                                 >
                                   <Trash2 className="w-4 h-4 mr-2" />
@@ -694,7 +940,7 @@ export default function WalkInPage() {
                                   View
                                 </DropdownMenuItem>
                                 <DropdownMenuItem 
-                                  onClick={() => handleDelete(log.id)}
+                                  onClick={() => openDeleteDialog(log.id, log.client_name)}
                                   className="text-destructive"
                                 >
                                   <Trash2 className="w-4 h-4 mr-2" />
@@ -713,6 +959,34 @@ export default function WalkInPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Walk-In Log</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete the walk-in log for <strong>{deleteLogName}</strong>? 
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setIsDeleteDialogOpen(false);
+              setDeleteLogId(null);
+              setDeleteLogName('');
+            }}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Walk-In Details Modal */}
       <Dialog open={isDetailsModalOpen} onOpenChange={setIsDetailsModalOpen}>

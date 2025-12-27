@@ -53,15 +53,16 @@ export const getWalkInLogsByDateRange = async (
 export const createWalkInLog = async (data: CreateWalkInLogData): Promise<number> => {
   const [result] = await pool.query<ResultSetHeader>(
     `INSERT INTO walk_in_logs 
-    (client_name, guest_names, address, accommodation_id, check_in_date, 
+    (client_name, guest_names, address, accommodation_id, check_in_date, time_slot,
      adults, kids, pwd, amount_paid, created_by)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       data.client_name,
       data.guest_names || null,
       data.address || null,
       data.accommodation_id || null,
       data.check_in_date,
+      data.time_slot || 'morning',
       data.adults || 0,
       data.kids || 0,
       data.pwd || 0,

@@ -11,6 +11,7 @@ import { Loader2, CheckCircle, Turtle, ArrowLeft } from 'lucide-react';
 import { API_URL } from '@/lib/utils';
 import AuthCarousel from '@/components/AuthCarousel';
 import { toast } from '@/hooks/use-toast';
+import { LoginTermsModal } from '@/components/LoginTermsModal';
 
 function LoginForm() {
   const router = useRouter();
@@ -229,6 +230,9 @@ function LoginForm() {
             <Link href="/signup" className="font-bold text-primary hover:underline">
               Sign Up
             </Link>
+          </div>
+          <div className="mt-2 text-center text-sm">
+            By logging in, you agree to our <LoginTermsModal />
           </div>
         </div>
       </div>

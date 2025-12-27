@@ -40,12 +40,22 @@ import {
 import { API_URL } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 
+// Time slot type and labels
+type TimeSlotType = 'morning' | 'night' | 'whole_day';
+
+const TIME_SLOT_LABELS: Record<TimeSlotType, string> = {
+  morning: 'Morning (9 AM - 5 PM)',
+  night: 'Night (5:30 PM - 8 AM)',
+  whole_day: 'Whole Day (9 AM - 8 AM)'
+};
+
 interface Booking {
   id: number;
   user_id: number;
   accommodation_id?: number;
   check_in_date: string;
-  booking_time?: string; // Time field for regular bookings
+  booking_time?: string; // Legacy time field for regular bookings
+  time_slot?: TimeSlotType; // New time slot field
   check_out_date?: string;
   checked_out_at?: string;
   adults?: number;
@@ -403,6 +413,32 @@ export default function BookingsPage() {
     return '09:00 AM';
   };
 
+  // Format time slot for display
+  const formatTimeSlot = (booking: Booking) => {
+    // Use time_slot if available (new system)
+    if (booking.time_slot) {
+      const shortLabels: Record<TimeSlotType, string> = {
+        morning: 'Morning',
+        night: 'Night',
+        whole_day: 'Whole Day'
+      };
+      return shortLabels[booking.time_slot] || booking.time_slot;
+    }
+    
+    // For event bookings, use event_type
+    if (booking.booking_type === 'event' && booking.event_type) {
+      const eventLabels: Record<string, string> = {
+        morning: 'Morning',
+        evening: 'Evening',
+        whole_day: 'Whole Day'
+      };
+      return eventLabels[booking.event_type] || booking.event_type;
+    }
+    
+    // Fallback to legacy booking_time
+    return formatTime(booking.booking_time);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -462,7 +498,7 @@ export default function BookingsPage() {
               : 'Day use'}
         </TableCell>
       )}
-      <TableCell>{formatTime(booking.booking_time)}</TableCell>
+      <TableCell>{formatTimeSlot(booking)}</TableCell>
       <TableCell>
         {booking.booking_type === 'event' 
           ? 'Exclusive Event' 
@@ -881,6 +917,16 @@ export default function BookingsPage() {
                   <div>
                     <p className="text-sm text-muted-foreground">Check-in Date</p>
                     <p className="font-medium">{formatDate(selectedBooking.check_in_date)}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Time Slot</p>
+                    <p className="font-medium">
+                      {selectedBooking.time_slot 
+                        ? TIME_SLOT_LABELS[selectedBooking.time_slot]
+                        : selectedBooking.event_type 
+                          ? selectedBooking.event_type.replace('_', ' ').toUpperCase()
+                          : formatTime(selectedBooking.booking_time)}
+                    </p>
                   </div>
                   {selectedBooking.status === 'completed' && (
                     <div>

@@ -5,6 +5,9 @@ import {
   getUnavailableDates,
   getDateBookingSummary,
   checkEventConflictsForDate,
+  getAvailableSlotsForAccommodation,
+  getAvailableAccommodations,
+  TimeSlotType,
 } from '../services/availability.service.js';
 import { successResponse, errorResponse } from '../utils/response.js';
 
@@ -14,7 +17,7 @@ import { successResponse, errorResponse } from '../utils/response.js';
  */
 export const checkRegularAvailability = async (req: Request, res: Response) => {
   try {
-    const { accommodation_id, check_in_date, check_out_date } = req.query;
+    const { accommodation_id, check_in_date, time_slot } = req.query;
 
     if (!accommodation_id || !check_in_date) {
       return res.status(400).json(
@@ -22,15 +25,52 @@ export const checkRegularAvailability = async (req: Request, res: Response) => {
       );
     }
 
+    // Validate time_slot if provided
+    const validSlots: TimeSlotType[] = ['morning', 'night', 'whole_day'];
+    const slot = (time_slot as TimeSlotType) || 'morning';
+    
+    if (time_slot && !validSlots.includes(slot)) {
+      return res.status(400).json(
+        errorResponse('time_slot must be morning, night, or whole_day', 400)
+      );
+    }
+
     const result = await checkRegularBookingAvailability(
       parseInt(accommodation_id as string),
       check_in_date as string,
-      check_out_date as string || null
+      slot
     );
 
     res.json(successResponse(result));
   } catch (error: any) {
     console.error('Check regular availability error:', error);
+    res.status(500).json(errorResponse(error.message));
+  }
+};
+
+/**
+ * Get available time slots for an accommodation on a date
+ * GET /api/availability/slots
+ */
+export const getAvailableSlots = async (req: Request, res: Response) => {
+  try {
+    const { accommodation_id, date, exclude_booking_id } = req.query;
+
+    if (!accommodation_id || !date) {
+      return res.status(400).json(
+        errorResponse('accommodation_id and date are required', 400)
+      );
+    }
+
+    const slots = await getAvailableSlotsForAccommodation(
+      parseInt(accommodation_id as string),
+      date as string,
+      exclude_booking_id ? parseInt(exclude_booking_id as string) : undefined
+    );
+
+    res.json(successResponse({ availableSlots: slots }));
+  } catch (error: any) {
+    console.error('Get available slots error:', error);
     res.status(500).json(errorResponse(error.message));
   }
 };
@@ -126,6 +166,52 @@ export const getEventConflicts = async (req: Request, res: Response) => {
     res.json(successResponse(conflicts));
   } catch (error: any) {
     console.error('Get event conflicts error:', error);
+    res.status(500).json(errorResponse(error.message));
+  }
+};
+
+/**
+ * Get available accommodations for a specific date and time slot
+ * GET /api/availability/available-accommodations
+ */
+export const getAvailableAccommodationsController = async (req: Request, res: Response) => {
+  try {
+    const { date, time_slot, accommodation_type } = req.query;
+
+    console.log('Availability request:', { date, time_slot, accommodation_type });
+
+    if (!date || !time_slot || !accommodation_type) {
+      return res.status(400).json(
+        errorResponse('date, time_slot, and accommodation_type are required', 400)
+      );
+    }
+
+    const validSlots: TimeSlotType[] = ['morning', 'night', 'whole_day'];
+    const slot = time_slot as TimeSlotType;
+    
+    if (!validSlots.includes(slot)) {
+      return res.status(400).json(
+        errorResponse('time_slot must be morning, night, or whole_day', 400)
+      );
+    }
+
+    if (accommodation_type !== 'cottage' && accommodation_type !== 'room') {
+      return res.status(400).json(
+        errorResponse('accommodation_type must be cottage or room', 400)
+      );
+    }
+
+    const availableIds = await getAvailableAccommodations(
+      date as string,
+      slot,
+      accommodation_type as 'cottage' | 'room'
+    );
+
+    console.log('Returning available IDs:', availableIds);
+
+    res.json(successResponse({ availableAccommodationIds: availableIds }));
+  } catch (error: any) {
+    console.error('Get available accommodations error:', error);
     res.status(500).json(errorResponse(error.message));
   }
 };

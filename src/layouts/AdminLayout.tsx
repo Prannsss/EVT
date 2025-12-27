@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import { usePathname, useRouter } from 'next/navigation';
 import { AdminSidebar } from '@/components/admin-sidebar';
@@ -25,12 +25,44 @@ interface AdminLayoutProps {
   pageDescription?: string;
 }
 
+interface AdminUser {
+  name: string;
+  email: string;
+}
+
 export default function AdminLayout({
   children,
   pageTitle,
   pageDescription,
 }: AdminLayoutProps) {
   const router = useRouter();
+  const [adminUser, setAdminUser] = useState<AdminUser>({ name: 'Admin User', email: 'admin@elimarspring.com' });
+  
+  // Fetch admin user info from localStorage on mount
+  useEffect(() => {
+    try {
+      const userStr = localStorage.getItem('user');
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        setAdminUser({
+          name: user.name || user.full_name || 'Admin User',
+          email: user.email || 'admin@elimarspring.com',
+        });
+      }
+    } catch (error) {
+      console.error('Error parsing user data:', error);
+    }
+  }, []);
+  
+  // Get initials from name
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(word => word[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
   
   // Logout handler
   const handleLogout = () => {
@@ -104,7 +136,7 @@ export default function AdminLayout({
                       <Avatar className="h-10 w-10">
                         <AvatarImage src="/assets/avatar-placeholder.png" alt="User" />
                         <AvatarFallback className="bg-gradient-to-br from-blue-600 to-sky-400 text-white font-semibold">
-                            AD
+                            {getInitials(adminUser.name)}
                           </AvatarFallback>
                       </Avatar>
                     </Button>
@@ -112,9 +144,9 @@ export default function AdminLayout({
                   <DropdownMenuContent className="w-56" align="end" forceMount>
                     <DropdownMenuLabel className="font-normal">
                       <div className="flex flex-col space-y-1">
-                        <p className="text-sm font-medium leading-none">Admin User</p>
+                        <p className="text-sm font-medium leading-none">{adminUser.name}</p>
                         <p className="text-xs leading-none text-muted-foreground">
-                          admin@elimarspring.com
+                          {adminUser.email}
                         </p>
                       </div>
                     </DropdownMenuLabel>

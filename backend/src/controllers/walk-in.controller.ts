@@ -8,6 +8,7 @@ import {
   deleteWalkInLog,
   checkOutWalkInLog,
 } from '../models/walk-in.model.js';
+import { updateAccommodationStatus } from '../models/accommodation.model.js';
 import { successResponse, errorResponse } from '../utils/response.js';
 
 export const getWalkInLogs = async (req: Request, res: Response) => {
@@ -58,6 +59,17 @@ export const createWalkInLogEntry = async (req: Request, res: Response) => {
     const logId = await createWalkInLog(logData);
     const newLog = await getWalkInLogById(logId);
 
+    // Update accommodation status based on time slot
+    if (newLog && newLog.accommodation_id) {
+      const timeSlot = newLog.time_slot || 'morning';
+      let statusMap: { [key: string]: 'booked(morning)' | 'booked(night)' | 'booked(whole_day)' } = {
+        'morning': 'booked(morning)',
+        'night': 'booked(night)',
+        'whole_day': 'booked(whole_day)'
+      };
+      await updateAccommodationStatus(newLog.accommodation_id, statusMap[timeSlot]);
+    }
+
     return res.status(201).json(successResponse(newLog, 'Walk-in log created successfully'));
   } catch (err) {
     console.error('Error creating walk-in log:', err);
@@ -101,10 +113,22 @@ export const deleteWalkInLogEntry = async (req: Request, res: Response) => {
 export const checkOutWalkInLogEntry = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    
+    // Get the log first to get accommodation_id
+    const log = await getWalkInLogById(parseInt(id));
+    if (!log) {
+      return res.status(404).json(errorResponse('Walk-in log not found'));
+    }
+
     const checkedOut = await checkOutWalkInLog(parseInt(id));
 
     if (!checkedOut) {
       return res.status(404).json(errorResponse('Walk-in log not found'));
+    }
+
+    // Reset accommodation status to vacant
+    if (log.accommodation_id) {
+      await updateAccommodationStatus(log.accommodation_id, 'vacant');
     }
 
     const updatedLog = await getWalkInLogById(parseInt(id));

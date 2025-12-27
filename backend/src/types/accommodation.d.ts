@@ -2,6 +2,7 @@ export interface Accommodation {
   id: number;
   name: string;
   type: 'room' | 'cottage';
+  status: 'vacant' | 'pending' | 'booked(morning)' | 'booked(night)' | 'booked(whole_day)';
   capacity: string;
   description: string | null;
   price: number;
@@ -9,6 +10,9 @@ export interface Accommodation {
   inclusions: string | null;
   image_url: string | null;
   panoramic_url: string | null;
+  supports_morning: boolean;
+  supports_night: boolean;
+  supports_whole_day: boolean;
   created_at: Date;
   updated_at: Date;
 }
@@ -23,6 +27,9 @@ export interface AccommodationCreate {
   inclusions?: string;
   image_url?: string;
   panoramic_url?: string;
+  supports_morning?: boolean;
+  supports_night?: boolean;
+  supports_whole_day?: boolean;
 }
 
 export interface AccommodationUpdate {
@@ -35,4 +42,7 @@ export interface AccommodationUpdate {
   inclusions?: string;
   image_url?: string;
   panoramic_url?: string;
+  supports_morning?: boolean;
+  supports_night?: boolean;
+  supports_whole_day?: boolean;
 }

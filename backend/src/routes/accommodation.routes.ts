@@ -7,6 +7,7 @@ import {
   addAccommodation,
   modifyAccommodation,
   removeAccommodation,
+  updateAccommodationAvailability,
 } from '../controllers/accommodation.controller.js';
 import { authenticate, requireAdmin } from '../middlewares/auth.middleware.js';
 
@@ -49,6 +50,7 @@ router.put('/:id', authenticate, requireAdmin, upload.fields([
   { name: 'mainImages', maxCount: 10 },
   { name: 'panoramicImage', maxCount: 1 }
 ]), modifyAccommodation);
+router.put('/:id/availability', authenticate, requireAdmin, updateAccommodationAvailability);
 router.delete('/:id', authenticate, requireAdmin, removeAccommodation);
 
 export default router;

@@ -64,3 +64,14 @@ export const deleteAccommodation = async (id: number): Promise<boolean> => {
   );
   return result.affectedRows > 0;
 };
+
+export const updateAccommodationStatus = async (
+  id: number, 
+  status: 'vacant' | 'pending' | 'booked(morning)' | 'booked(night)' | 'booked(whole_day)'
+): Promise<boolean> => {
+  const [result] = await pool.query<ResultSetHeader>(
+    'UPDATE accommodations SET status = ? WHERE id = ?',
+    [status, id]
+  );
+  return result.affectedRows > 0;
+};

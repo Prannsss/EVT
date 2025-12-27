@@ -13,6 +13,7 @@ import emailLogRoutes from './routes/email-log.routes.js';
 import pricingRoutes from './routes/pricing.routes.js';
 import walkInRoutes from './routes/walk-in.routes.js';
 import reportRoutes from './routes/report.routes.js';
+import timeSettingsRoutes from './routes/time-settings.routes.js';
 import { errorHandler } from './middlewares/error.middleware.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -43,6 +44,7 @@ app.use('/api/email_logs', emailLogRoutes);
 app.use('/api/pricing', pricingRoutes);
 app.use('/api/walk_in', walkInRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/time-settings', timeSettingsRoutes);
 
 // API root endpoint
 app.get('/api', (req, res) => {

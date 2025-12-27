@@ -1,8 +1,11 @@
+export type TimeSlotType = 'morning' | 'night' | 'whole_day';
+
 export interface Booking {
   id: number;
   user_id: number;
   accommodation_id: number;
   check_in_date: Date;
+  time_slot: TimeSlotType;
   booking_time: string;
   check_out_date: Date | null;
   adults: number;
@@ -28,6 +31,7 @@ export interface BookingCreate {
   user_id: number;
   accommodation_id: number;
   check_in_date: string;
+  time_slot?: TimeSlotType;
   booking_time: string;
   check_out_date?: string;
   adults: number;
@@ -46,6 +50,7 @@ export interface BookingCreate {
 
 export interface BookingUpdate {
   status?: 'pending' | 'approved' | 'cancelled' | 'completed';
+  time_slot?: TimeSlotType;
   proof_of_payment_url?: string;
   guest_names?: string;
   checked_out_at?: string;

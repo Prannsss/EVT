@@ -54,6 +54,10 @@ import {
   X,
   Loader2,
   AlertCircle,
+  Clock,
+  Sun,
+  Moon,
+  Calendar,
 } from "lucide-react";
 import { API_URL } from '@/lib/utils';
 
@@ -68,7 +72,20 @@ interface Accommodation {
   image_url: string | null;
   panoramic_url?: string | null;
   inclusions?: string | null;
+  supports_morning?: boolean;
+  supports_night?: boolean;
+  supports_whole_day?: boolean;
   created_at: string;
+}
+
+// Time slot configuration type
+type TimeSlotType = 'morning' | 'night' | 'whole_day';
+
+interface TimeSlotConfig {
+  morning: { enabled: boolean; start: string; end: string };
+  night_cottage: { enabled: boolean; start: string; end: string; is_overnight: boolean };
+  night_room: { enabled: boolean; start: string; end: string; is_overnight: boolean };
+  whole_day: { enabled: boolean; start: string; end: string; is_overnight: boolean };
 }
 
 export default function AdminRoomsPage() {
@@ -107,10 +124,127 @@ export default function AdminRoomsPage() {
   );
   const mainImageInputRef = useRef<HTMLInputElement>(null)
   const panoramicImageInputRef = useRef<HTMLInputElement>(null)
+  
+  // Global time settings modal state
+  const [showTimeSettingsModal, setShowTimeSettingsModal] = useState(false);
+  const [globalTimeSettings, setGlobalTimeSettings] = useState<TimeSlotConfig>({
+    morning: { enabled: true, start: '09:00', end: '17:00' },
+    night_cottage: { enabled: true, start: '17:30', end: '22:00', is_overnight: false },
+    night_room: { enabled: true, start: '17:30', end: '08:00', is_overnight: true },
+    whole_day: { enabled: true, start: '09:00', end: '08:00', is_overnight: true },
+  });
+  const [savingTimeSettings, setSavingTimeSettings] = useState(false);
+  const [loadingTimeSettings, setLoadingTimeSettings] = useState(true);
+
+  // Fetch time settings from the database
+  const fetchTimeSettings = async () => {
+    try {
+      setLoadingTimeSettings(true);
+      const response = await fetch(`${API_URL}/api/time-settings`);
+      const data = await response.json();
+      
+      if (response.ok && data.data) {
+        setGlobalTimeSettings({
+          morning: {
+            enabled: data.data.morning?.enabled ?? true,
+            start: data.data.morning?.start || '09:00',
+            end: data.data.morning?.end || '17:00',
+          },
+          night_cottage: {
+            enabled: data.data.night_cottage?.enabled ?? true,
+            start: data.data.night_cottage?.start || '17:30',
+            end: data.data.night_cottage?.end || '22:00',
+            is_overnight: data.data.night_cottage?.is_overnight ?? false,
+          },
+          night_room: {
+            enabled: data.data.night_room?.enabled ?? true,
+            start: data.data.night_room?.start || '17:30',
+            end: data.data.night_room?.end || '08:00',
+            is_overnight: data.data.night_room?.is_overnight ?? true,
+          },
+          whole_day: {
+            enabled: data.data.whole_day?.enabled ?? true,
+            start: data.data.whole_day?.start || '09:00',
+            end: data.data.whole_day?.end || '08:00',
+            is_overnight: data.data.whole_day?.is_overnight ?? true,
+          },
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching time settings:', error);
+    } finally {
+      setLoadingTimeSettings(false);
+    }
+  };
 
   useEffect(() => {
     fetchAccommodations();
+    fetchTimeSettings();
   }, []);
+
+  // Save global time settings to database
+  const handleSaveTimeSettings = async () => {
+    try {
+      setSavingTimeSettings(true);
+      const token = localStorage.getItem('token');
+      
+      if (!token) {
+        toast({
+          title: 'Authentication Required',
+          description: 'Please login to continue.',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      const response = await fetch(`${API_URL}/api/time-settings`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          morning: {
+            start: globalTimeSettings.morning.start,
+            end: globalTimeSettings.morning.end,
+          },
+          night_cottage: {
+            start: globalTimeSettings.night_cottage.start,
+            end: globalTimeSettings.night_cottage.end,
+          },
+          night_room: {
+            start: globalTimeSettings.night_room.start,
+            end: globalTimeSettings.night_room.end,
+          },
+          whole_day: {
+            start: globalTimeSettings.whole_day.start,
+            end: globalTimeSettings.whole_day.end,
+          },
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to save time settings');
+      }
+      
+      toast({
+        title: 'Success!',
+        description: 'Time slot settings saved successfully!',
+      });
+      setShowTimeSettingsModal(false);
+    } catch (error) {
+      console.error('Error saving time settings:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to save time settings',
+        variant: 'destructive'
+      });
+    } finally {
+      setSavingTimeSettings(false);
+    }
+  };
 
   const fetchAccommodations = async () => {
     try {
@@ -485,10 +619,16 @@ export default function AdminRoomsPage() {
             Manage cottages and rooms, edit details, and view panoramic tours
           </p>
         </div>
-        <Button onClick={() => setShowAddModal(true)} className="gap-2">
-          <Plus className="w-4 h-4" />
-          Add Accommodation
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={() => setShowTimeSettingsModal(true)} variant="outline" className="gap-2">
+            <Clock className="w-4 h-4" />
+            Time Settings
+          </Button>
+          <Button onClick={() => setShowAddModal(true)} className="gap-2">
+            <Plus className="w-4 h-4" />
+            Add Accommodation
+          </Button>
+        </div>
       </div>
 
       {accommodations.length === 0 ? (
@@ -530,7 +670,7 @@ export default function AdminRoomsPage() {
             }
             
             return (
-              <div key={accommodation.id}>
+              <div key={accommodation.id} className="group relative">
                 <button
                   onClick={() => setSelected(accommodation)}
                   className="w-full rounded-lg overflow-hidden shadow-md hover:shadow-xl hover:scale-[1.02] transition-all duration-300 bg-card border-2 border-border hover:border-primary"
@@ -548,6 +688,7 @@ export default function AdminRoomsPage() {
                         (e.target as HTMLImageElement).src = '/placeholder-room.svg';
                       }}
                     />
+
                   </div>
                   <div className="p-4 bg-card">
                     <div className="font-semibold text-base mb-1 line-clamp-1">
@@ -1366,6 +1507,249 @@ export default function AdminRoomsPage() {
             <Button onClick={handleAddAccommodation} className="gap-2">
               <Plus className="w-4 h-4" />
               Add Accommodation
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Global Time Settings Modal */}
+      <Dialog open={showTimeSettingsModal} onOpenChange={setShowTimeSettingsModal}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Clock className="w-5 h-5 text-primary" />
+              Global Time Slot Settings
+            </DialogTitle>
+            <DialogDescription>
+              Configure the time ranges for Morning, Night, and Whole Day bookings. These settings are stored in the database and apply globally.
+            </DialogDescription>
+          </DialogHeader>
+
+          {loadingTimeSettings ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+          ) : (
+            <div className="space-y-6 py-4">
+              {/* Morning Slot */}
+              <div className="p-4 border rounded-lg bg-amber-50/50 dark:bg-amber-950/20">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 rounded-full bg-amber-100 dark:bg-amber-900">
+                    <Sun className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-lg">Morning Slot</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Day-time booking (applies to both cottages and rooms)
+                    </p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="morning-start" className="text-sm font-semibold">Start Time</Label>
+                    <Input
+                      id="morning-start"
+                      type="time"
+                      value={globalTimeSettings.morning.start}
+                      onChange={(e) => setGlobalTimeSettings(prev => ({
+                        ...prev,
+                        morning: { ...prev.morning, start: e.target.value }
+                      }))}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="morning-end" className="text-sm font-semibold">End Time</Label>
+                    <Input
+                      id="morning-end"
+                      type="time"
+                      value={globalTimeSettings.morning.end}
+                      onChange={(e) => setGlobalTimeSettings(prev => ({
+                        ...prev,
+                        morning: { ...prev.morning, end: e.target.value }
+                      }))}
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Current: {globalTimeSettings.morning.start} - {globalTimeSettings.morning.end}
+                </p>
+              </div>
+
+              {/* Night Slot - Cottage */}
+              <div className="p-4 border rounded-lg bg-indigo-50/50 dark:bg-indigo-950/20">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 rounded-full bg-indigo-100 dark:bg-indigo-900">
+                    <Moon className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-lg">Night Slot (Cottages)</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Evening booking for cottages - same day only
+                    </p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="night-cottage-start" className="text-sm font-semibold">Start Time</Label>
+                    <Input
+                      id="night-cottage-start"
+                      type="time"
+                      value={globalTimeSettings.night_cottage.start}
+                      onChange={(e) => setGlobalTimeSettings(prev => ({
+                        ...prev,
+                        night_cottage: { ...prev.night_cottage, start: e.target.value }
+                      }))}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="night-cottage-end" className="text-sm font-semibold">End Time (Same Day)</Label>
+                    <Input
+                      id="night-cottage-end"
+                      type="time"
+                      value={globalTimeSettings.night_cottage.end}
+                      onChange={(e) => setGlobalTimeSettings(prev => ({
+                        ...prev,
+                        night_cottage: { ...prev.night_cottage, end: e.target.value }
+                      }))}
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Current: {globalTimeSettings.night_cottage.start} - {globalTimeSettings.night_cottage.end} (same day)
+                </p>
+              </div>
+
+              {/* Night Slot - Room */}
+              <div className="p-4 border rounded-lg bg-violet-50/50 dark:bg-violet-950/20">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 rounded-full bg-violet-100 dark:bg-violet-900">
+                    <Moon className="w-5 h-5 text-violet-600 dark:text-violet-400" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-lg">Night Slot (Rooms)</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Overnight booking for rooms - ends next day
+                    </p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="night-room-start" className="text-sm font-semibold">Start Time</Label>
+                    <Input
+                      id="night-room-start"
+                      type="time"
+                      value={globalTimeSettings.night_room.start}
+                      onChange={(e) => setGlobalTimeSettings(prev => ({
+                        ...prev,
+                        night_room: { ...prev.night_room, start: e.target.value }
+                      }))}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="night-room-end" className="text-sm font-semibold">End Time (Next Day)</Label>
+                    <Input
+                      id="night-room-end"
+                      type="time"
+                      value={globalTimeSettings.night_room.end}
+                      onChange={(e) => setGlobalTimeSettings(prev => ({
+                        ...prev,
+                        night_room: { ...prev.night_room, end: e.target.value }
+                      }))}
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Current: {globalTimeSettings.night_room.start} - {globalTimeSettings.night_room.end} (overnight)
+                </p>
+              </div>
+
+              {/* Whole Day Slot */}
+              <div className="p-4 border rounded-lg bg-green-50/50 dark:bg-green-950/20">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 rounded-full bg-green-100 dark:bg-green-900">
+                    <Calendar className="w-5 h-5 text-green-600 dark:text-green-400" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-lg">Whole Day Slot (Rooms Only)</h4>
+                    <p className="text-sm text-muted-foreground">
+                      24-hour booking with overnight stay
+                    </p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="wholeday-start" className="text-sm font-semibold">Start Time</Label>
+                    <Input
+                      id="wholeday-start"
+                      type="time"
+                      value={globalTimeSettings.whole_day.start}
+                      onChange={(e) => setGlobalTimeSettings(prev => ({
+                        ...prev,
+                        whole_day: { ...prev.whole_day, start: e.target.value }
+                      }))}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="wholeday-end" className="text-sm font-semibold">End Time (Next Day)</Label>
+                    <Input
+                      id="wholeday-end"
+                      type="time"
+                      value={globalTimeSettings.whole_day.end}
+                      onChange={(e) => setGlobalTimeSettings(prev => ({
+                        ...prev,
+                        whole_day: { ...prev.whole_day, end: e.target.value }
+                      }))}
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Current: {globalTimeSettings.whole_day.start} - {globalTimeSettings.whole_day.end} (overnight)
+                </p>
+              </div>
+
+              <div className="p-4 bg-muted rounded-lg">
+                <p className="text-sm font-semibold mb-2">Important Notes:</p>
+                <ul className="text-xs text-muted-foreground space-y-1">
+                  <li>• <strong>Cottages:</strong> Can only be booked for Morning or Night slots (not Whole Day)</li>
+                  <li>• <strong>Rooms:</strong> Support all three time slots with overnight capabilities</li>
+                  <li>• <strong>Blocking Rules:</strong> Whole Day bookings block Morning and Night. Morning bookings block Whole Day (but not Night), and vice versa.</li>
+                  <li>• These settings are stored in the database and apply to all bookings</li>
+                </ul>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setShowTimeSettingsModal(false)}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleSaveTimeSettings}
+              disabled={savingTimeSettings || loadingTimeSettings}
+              className="gap-2"
+            >
+              {savingTimeSettings ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4" />
+                  Save Settings
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -165,3 +165,37 @@ export const removeAccommodation = async (req: Request, res: Response) => {
     res.status(500).json(errorResponse(error.message));
   }
 };
+
+export const updateAccommodationAvailability = async (req: Request, res: Response) => {
+  try {
+    const id = parseInt(req.params.id);
+    const { supports_morning, supports_night, supports_whole_day } = req.body;
+
+    // Get current accommodation to check type
+    const accommodation = await getAccommodationById(id);
+    if (!accommodation) {
+      return res.status(404).json(errorResponse('Accommodation not found', 404));
+    }
+
+    // Cottages cannot have whole_day
+    if (accommodation.type === 'cottage' && supports_whole_day === true) {
+      return res.status(400).json(errorResponse('Cottages cannot support whole day booking'));
+    }
+
+    const updates: any = {};
+    if (supports_morning !== undefined) updates.supports_morning = supports_morning ? 1 : 0;
+    if (supports_night !== undefined) updates.supports_night = supports_night ? 1 : 0;
+    if (supports_whole_day !== undefined) updates.supports_whole_day = supports_whole_day ? 1 : 0;
+
+    const success = await updateAccommodation(id, updates);
+
+    if (!success) {
+      return res.status(404).json(errorResponse('Accommodation not found or no changes made', 404));
+    }
+
+    res.json(successResponse(null, 'Accommodation availability updated successfully'));
+  } catch (error: any) {
+    console.error('Update accommodation availability error:', error);
+    res.status(500).json(errorResponse(error.message));
+  }
+};

@@ -8,10 +8,10 @@ import {
   updateBooking,
   checkAccommodationAvailability,
 } from '../models/booking.model.js';
-import { getAccommodationById } from '../models/accommodation.model.js';
+import { getAccommodationById, updateAccommodationStatus } from '../models/accommodation.model.js';
 import { findUserById } from '../models/user.model.js';
 import { sendBookingConfirmation, sendBookingNotificationEmail, sendCheckOutThankYouEmail } from '../services/email.service.js';
-import { checkRegularBookingAvailability } from '../services/availability.service.js';
+import { checkRegularBookingAvailability, TimeSlotType, TIME_SLOTS } from '../services/availability.service.js';
 import { successResponse, errorResponse } from '../utils/response.js';
 
 export const getBookings = async (req: Request, res: Response) => {
@@ -57,7 +57,8 @@ export const addBooking = async (req: Request, res: Response) => {
     const {
       accommodation_id,
       check_in_date,
-      booking_time,
+      time_slot,
+      booking_time, // Legacy support
       check_out_date,
       adults,
       kids,
@@ -84,41 +85,64 @@ export const addBooking = async (req: Request, res: Response) => {
       return res.status(400).json(errorResponse('Proof of payment is required', 400));
     }
 
+    // Determine time slot - use provided time_slot or derive from legacy booking_time
+    const validSlots: TimeSlotType[] = ['morning', 'night', 'whole_day'];
+    let selectedSlot: TimeSlotType = 'morning';
+    
+    if (time_slot && validSlots.includes(time_slot)) {
+      selectedSlot = time_slot;
+    } else if (booking_time) {
+      // Legacy: Convert booking_time to time_slot
+      const hour = parseInt(booking_time.split(':')[0]);
+      if (hour >= 17) {
+        selectedSlot = 'night';
+      } else {
+        selectedSlot = 'morning';
+      }
+    }
+    
+    // Override with whole_day for overnight stays on rooms
+    if (overnight_stay === 'true' || overnight_stay === true) {
+      selectedSlot = 'whole_day';
+    }
+
     // Verify accommodation exists
     const accommodation = await getAccommodationById(accommodation_id);
     if (!accommodation) {
       return res.status(404).json(errorResponse('Accommodation not found', 404));
     }
 
+    // Validate time slot based on accommodation type
+    // Cottages: morning or night only
+    // Rooms: morning, night, or whole_day
+    if (accommodation.type === 'cottage' && selectedSlot === 'whole_day') {
+      return res.status(400).json(
+        errorResponse('Cottages cannot be booked for whole day. Please select morning or night slot.', 400)
+      );
+    }
+
     // Check availability considering event bookings (which have priority)
     const availabilityResult = await checkRegularBookingAvailability(
       accommodation_id,
       check_in_date,
-      check_out_date || null
+      selectedSlot
     );
 
     if (!availabilityResult.available) {
       return res.status(409).json(
         errorResponse(
-          availabilityResult.reason || 'This accommodation is not available for the selected dates', 
+          availabilityResult.reason || 'This accommodation is not available for the selected time slot', 
           409
         )
       );
-    }
-
-    // If only partial availability (due to event bookings), inform user
-    if (availabilityResult.availableTimeSlots && 
-        availabilityResult.availableTimeSlots.length > 0 && 
-        availabilityResult.availableTimeSlots.length < 3) {
-      // Return info about available slots if needed
-      console.log('Partial availability:', availabilityResult);
     }
 
     const bookingId = await createBooking({
       user_id: req.user!.id,
       accommodation_id,
       check_in_date,
-      booking_time: booking_time || '09:00:00',
+      time_slot: selectedSlot,
+      booking_time: booking_time || TIME_SLOTS[selectedSlot].start + ':00',
       check_out_date,
       adults: parseInt(adults) || 0,
       kids: parseInt(kids) || 0,
@@ -133,6 +157,9 @@ export const addBooking = async (req: Request, res: Response) => {
       total_price: parseFloat(total_price),
       proof_of_payment_url,
     });
+
+    // Update accommodation status to pending when booking is created
+    await updateAccommodationStatus(accommodation_id, 'pending');
 
     // Send confirmation email
     const user = await findUserById(req.user!.id);
@@ -280,6 +307,15 @@ export const approveBooking = async (req: Request, res: Response) => {
       return res.status(400).json(errorResponse('Approval failed', 400));
     }
 
+    // Update accommodation status based on time slot
+    const timeSlot = booking.time_slot || 'morning';
+    let statusMap: { [key: string]: 'booked(morning)' | 'booked(night)' | 'booked(whole_day)' } = {
+      'morning': 'booked(morning)',
+      'night': 'booked(night)',
+      'whole_day': 'booked(whole_day)'
+    };
+    await updateAccommodationStatus(booking.accommodation_id, statusMap[timeSlot]);
+
     // Send approval notification email
     const user = await findUserById(booking.user_id);
     const accommodation = await getAccommodationById(booking.accommodation_id);
@@ -321,6 +357,9 @@ export const rejectBooking = async (req: Request, res: Response) => {
     if (!success) {
       return res.status(400).json(errorResponse('Rejection failed', 400));
     }
+
+    // Reset accommodation status to vacant when booking is rejected
+    await updateAccommodationStatus(booking.accommodation_id, 'vacant');
 
     // Send rejection notification email
     const user = await findUserById(booking.user_id);
@@ -367,6 +406,9 @@ export const checkOutBooking = async (req: Request, res: Response) => {
       'UPDATE bookings SET status = ?, checked_out_at = NOW() WHERE id = ?',
       ['completed', id]
     );
+
+    // Reset accommodation status to vacant
+    await updateAccommodationStatus(booking.accommodation_id, 'vacant');
 
     // Get updated booking with accommodation details
     const updatedBooking = await getBookingById(id);

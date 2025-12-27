@@ -60,16 +60,17 @@ export const getBookingsByUserId = async (userId: number): Promise<any[]> => {
 export const createBooking = async (data: BookingCreate): Promise<number> => {
   const [result] = await pool.query<ResultSetHeader>(
     `INSERT INTO bookings (
-      user_id, accommodation_id, check_in_date, booking_time, check_out_date, 
+      user_id, accommodation_id, check_in_date, time_slot, booking_time, check_out_date, 
       adults, kids, pwd, senior, 
       adult_swimming, kid_swimming, pwd_swimming, senior_swimming,
       overnight_stay, overnight_swimming, 
       total_price, proof_of_payment_url
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       data.user_id,
       data.accommodation_id,
       data.check_in_date,
+      data.time_slot || 'morning',
       data.booking_time,
       data.check_out_date || null,
       data.adults,

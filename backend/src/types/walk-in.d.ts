@@ -1,3 +1,5 @@
+export type TimeSlotType = 'morning' | 'night' | 'whole_day';
+
 export interface WalkInLog {
   id: number;
   client_name: string;
@@ -5,6 +7,7 @@ export interface WalkInLog {
   address: string | null;
   accommodation_id: number | null;
   check_in_date: string;
+  time_slot: TimeSlotType;
   adults: number;
   kids: number;
   pwd: number;
@@ -25,6 +28,7 @@ export interface CreateWalkInLogData {
   address?: string;
   accommodation_id?: number;
   check_in_date: string;
+  time_slot?: TimeSlotType;
   adults?: number;
   kids?: number;
   pwd?: number;
@@ -38,6 +42,7 @@ export interface UpdateWalkInLogData {
   address?: string;
   accommodation_id?: number;
   check_in_date?: string;
+  time_slot?: TimeSlotType;
   adults?: number;
   kids?: number;
   pwd?: number;
