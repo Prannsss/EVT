@@ -788,14 +788,15 @@ export const getAvailableAccommodations = async (
     [accommodationType]
   );
   
-  // Check if this is for today's date (using local timezone)
+  // Check if this is for today's date (using local timezone without UTC conversion)
   const today = new Date();
-  const localToday = new Date(today.getFullYear(), today.getMonth(), today.getDate())
-    .toISOString()
-    .split('T')[0];
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  const localToday = `${year}-${month}-${day}`;
   const isToday = date === localToday;
   
-  console.log('Date comparison:', { requestedDate: date, localToday, isToday });
+  console.log('Date comparison:', { requestedDate: date, localToday, isToday, serverTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone });
   
   // If checking for today, use accommodation status instead of bookings
   if (isToday) {
@@ -852,21 +853,32 @@ export const getAvailableAccommodations = async (
   
   // If requesting morning and morning event exists, no morning slots
   if (timeSlot === 'morning' && eventConflicts.hasMorning) {
+    console.log('Returning empty: morning event conflict');
     return [];
   }
   
   // If requesting night and evening event exists, no night slots
   if (timeSlot === 'night' && eventConflicts.hasEvening) {
+    console.log('Returning empty: evening event conflict');
     return [];
   }
   
   // If requesting whole_day and either event slot exists, can't book whole day
   if (timeSlot === 'whole_day' && (eventConflicts.hasMorning || eventConflicts.hasEvening)) {
+    console.log('Returning empty: whole_day event conflict');
     return [];
   }
   
   // Get conflicting slots for this accommodation type
   const conflictingSlots = getConflictingSlots(timeSlot, accommodationType);
+  
+  console.log('Future date availability check:', {
+    date,
+    timeSlot,
+    accommodationType,
+    conflictingSlots,
+    allAccommodationIds: (allAccommodations as any[]).map(a => a.id)
+  });
   
   // Get accommodations already booked in conflicting slots
   const [bookedAccommodations] = await pool.query<RowDataPacket[]>(
@@ -895,10 +907,14 @@ export const getAvailableAccommodations = async (
     ...walkInAccommodations.map((w: any) => w.accommodation_id),
   ]);
   
+  console.log('Booked/occupied IDs:', Array.from(bookedIds));
+  
   // Filter available accommodations
   const availableIds = (allAccommodations as any[])
     .map(a => a.id)
     .filter(id => !bookedIds.has(id));
+  
+  console.log('Final available IDs for future date:', availableIds);
   
   return availableIds;
 };
