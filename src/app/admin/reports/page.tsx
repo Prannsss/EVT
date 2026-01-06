@@ -43,6 +43,7 @@ interface Booking {
 
 interface GuestEntry {
   name: string;
+  address: string;
   type: 'adult' | 'kid' | 'pwd' | 'senior';
 }
 
@@ -58,7 +59,6 @@ export default function ReportsPage() {
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [selectedBookingId, setSelectedBookingId] = useState<string>('');
   const [guestEntries, setGuestEntries] = useState<GuestEntry[]>([]);
-  const [address, setAddress] = useState<string>('');
   const [savingLog, setSavingLog] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
@@ -137,16 +137,16 @@ export default function ReportsPage() {
     // Initialize guest entries based on booking data
     const entries: GuestEntry[] = [];
     for (let i = 0; i < (booking.adults || 0); i++) {
-      entries.push({ name: '', type: 'adult' });
+      entries.push({ name: '', address: '', type: 'adult' });
     }
     for (let i = 0; i < (booking.kids || 0); i++) {
-      entries.push({ name: '', type: 'kid' });
+      entries.push({ name: '', address: '', type: 'kid' });
     }
     for (let i = 0; i < (booking.pwd || 0); i++) {
-      entries.push({ name: '', type: 'pwd' });
+      entries.push({ name: '', address: '', type: 'pwd' });
     }
     for (let i = 0; i < (booking.senior || 0); i++) {
-      entries.push({ name: '', type: 'senior' });
+      entries.push({ name: '', address: '', type: 'senior' });
     }
     setGuestEntries(entries);
   };
@@ -169,6 +169,12 @@ export default function ReportsPage() {
     setGuestEntries(updated);
   };
 
+  const handleGuestAddressChange = (index: number, address: string) => {
+    const updated = [...guestEntries];
+    updated[index].address = address;
+    setGuestEntries(updated);
+  };
+
   const handleSaveLogClick = () => {
     if (!selectedClient || !selectedBooking) {
       toast({
@@ -183,6 +189,15 @@ export default function ReportsPage() {
       toast({
         title: 'Error',
         description: 'Please fill in all guest names',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (guestEntries.some(entry => !entry.address.trim())) {
+      toast({
+        title: 'Error',
+        description: 'Please fill in all guest addresses',
         variant: 'destructive',
       });
       return;
@@ -214,8 +229,7 @@ export default function ReportsPage() {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ 
-          guest_names: guestNames,
-          address: address.trim()
+          guest_names: guestNames
         }),
       });
 
@@ -227,7 +241,6 @@ export default function ReportsPage() {
         setSelectedClient('');
         setSelectedBooking(null);
         setGuestEntries([]);
-        setAddress('');
       } else {
         throw new Error('Failed to save log');
       }
@@ -458,9 +471,9 @@ export default function ReportsPage() {
         {/* Right Side - Guest Entry Form */}
         <Card>
           <CardHeader>
-            <CardTitle>Guest Names</CardTitle>
+            <CardTitle>Guest Names & Addresses</CardTitle>
             <CardDescription>
-              Enter the names of all guests for this booking
+              Enter the names and addresses of all guests for this booking
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -476,36 +489,35 @@ export default function ReportsPage() {
               <div className="space-y-4">
                 <div className="max-h-[400px] overflow-y-auto space-y-3 pr-2">
                   {guestEntries.map((entry, index) => (
-                    <div key={index} className="flex items-center gap-2">
-                      <div className="flex-1">
-                        <Input
-                          placeholder={`${entry.type.toUpperCase()} - Guest ${index + 1}`}
-                          value={entry.name}
-                          onChange={(e) => handleGuestNameChange(index, e.target.value)}
-                        />
+                    <div key={index} className="p-3 border rounded-lg space-y-2 bg-muted/30">
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1">
+                          <Input
+                            placeholder={`${entry.type.toUpperCase()} - Guest ${index + 1}`}
+                            value={entry.name}
+                            onChange={(e) => handleGuestNameChange(index, e.target.value)}
+                          />
+                        </div>
+                        <div className="w-20 text-center">
+                          <span className="text-xs font-medium px-2 py-1 bg-primary/10 text-primary rounded">
+                            {entry.type.toUpperCase()}
+                          </span>
+                        </div>
                       </div>
-                      <div className="w-20 text-center">
-                        <span className="text-xs font-medium px-2 py-1 bg-primary/10 text-primary rounded">
-                          {entry.type.toUpperCase()}
-                        </span>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          placeholder="Address"
+                          value={entry.address}
+                          onChange={(e) => handleGuestAddressChange(index, e.target.value)}
+                        />
                       </div>
                     </div>
                   ))}
                 </div>
 
-                <div className="space-y-2 pt-2">
-                  <Label htmlFor="address">Address</Label>
-                  <Input
-                    id="address"
-                    placeholder="Enter client address"
-                    value={address}
-                    onChange={(e) => setAddress(e.target.value)}
-                  />
-                </div>
-
                 <Button
                   onClick={handleSaveLogClick}
-                  disabled={savingLog || guestEntries.some(e => !e.name.trim()) || !address.trim()}
+                  disabled={savingLog || guestEntries.some(e => !e.name.trim() || !e.address.trim())}
                   className="w-full"
                 >
                   {savingLog ? (
@@ -536,11 +548,16 @@ export default function ReportsPage() {
             <p className="text-sm font-medium">Guest List:</p>
             <div className="max-h-[300px] overflow-y-auto space-y-2 border rounded-md p-3 bg-muted/30">
               {guestEntries.map((entry, index) => (
-                <div key={index} className="flex items-center justify-between text-sm">
-                  <span className="font-medium">{entry.name}</span>
-                  <span className="text-xs px-2 py-1 bg-primary/10 text-primary rounded">
-                    {entry.type.toUpperCase()}
-                  </span>
+                <div key={index} className="text-sm border-b last:border-0 pb-2 last:pb-0">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium">{entry.name}</span>
+                    <span className="text-xs px-2 py-1 bg-primary/10 text-primary rounded">
+                      {entry.type.toUpperCase()}
+                    </span>
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    📍 {entry.address}
+                  </div>
                 </div>
               ))}
             </div>

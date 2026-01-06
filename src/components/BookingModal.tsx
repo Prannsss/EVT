@@ -182,6 +182,21 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
     fetchUnavailableDates()
   }, [isOpen, accommodation, getUnavailableDates])
 
+  // Auto-enable overnight swimming for Night/Whole Day time slots (only for cottages, not rooms)
+  useEffect(() => {
+    // Rooms + Night/Whole Day = FREE swimming, so no need to auto-enable overnight swimming
+    if (accommodation?.type === 'room') {
+      // For rooms, don't auto-enable overnight swimming
+      setOvernightSwimming(false)
+    } else if (selectedTimeSlot === 'night' || selectedTimeSlot === 'whole_day') {
+      // For cottages with Night/Whole Day, auto-enable overnight swimming
+      setOvernightSwimming(true)
+    } else {
+      // Reset to false when switching to morning
+      setOvernightSwimming(false)
+    }
+  }, [selectedTimeSlot, accommodation?.type])
+
   // Check availability when date changes
   useEffect(() => {
     const checkAvailability = async () => {
@@ -266,6 +281,15 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
     checkAvailability()
   }, [bookingDate, accommodation, getEventConflicts, getAvailableSlots])
 
+  // Check if using night swimming rate (Night or Whole Day slot)
+  const isNightOrWholeDay = selectedTimeSlot === 'night' || selectedTimeSlot === 'whole_day'
+  
+  // Check if Room type (FREE swimming for all time slots)
+  const isRoomFreeSwimming = accommodation?.type === 'room'
+  
+  // Calculate total swimming guests
+  const totalSwimmingGuests = adultSwimming + kidSwimming + pwdSwimming + seniorSwimming
+
   // Calculate total price dynamically
   const totalPrice = useMemo(() => {
     if (!accommodation || !pricing) return 0
@@ -286,19 +310,32 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
     total += pwdCount * pricing.entrance.pwd
     total += seniorCount * pricing.entrance.senior
 
-    // Add swimming fees based on checkboxes
-    total += adultSwimming * pricing.swimming.adult
-    total += kidSwimming * pricing.swimming.kids
-    total += pwdSwimming * pricing.swimming.pwd
-    total += seniorSwimming * pricing.swimming.senior
+    // Swimming fees:
+    // Priority 1: Rooms = FREE swimming (all time slots)
+    // Priority 2: Cottages + Night/Whole Day = ₱200 per head
+    // Priority 3: Cottages + Morning = Daytime rates
+    if (isRoomFreeSwimming) {
+      // Rooms: Swimming is FREE (included) for all time slots
+      // No swimming charges added
+    } else if (isNightOrWholeDay) {
+      // Cottages + Night/Whole Day: ₱200 per head flat rate for all swimming guests
+      total += totalSwimmingGuests * pricing.night_swimming.per_head
+    } else {
+      // Morning: Use individual daytime swimming rates
+      total += adultSwimming * pricing.swimming.adult
+      total += kidSwimming * pricing.swimming.kids
+      total += pwdSwimming * pricing.swimming.pwd
+      total += seniorSwimming * pricing.swimming.senior
+    }
 
-    // Add overnight swimming fee (only for cottages) - based on guests who are swimming
-    if (overnightSwimming && accommodation.type === 'cottage') {
-      total += (adultSwimming + kidSwimming + pwdSwimming + seniorSwimming) * pricing.night_swimming.per_head
+    // Add overnight swimming fee for cottages (only when not already using night rate)
+    // For Night/Whole Day, the ₱200 rate already includes night swimming
+    if (overnightSwimming && accommodation.type === 'cottage' && !isNightOrWholeDay) {
+      total += totalSwimmingGuests * pricing.night_swimming.per_head
     }
 
     return total
-  }, [accommodation, pricing, adultCount, kidCount, pwdCount, seniorCount, adultSwimming, kidSwimming, pwdSwimming, seniorSwimming, overnightSwimming, selectedTimeSlot])
+  }, [accommodation, pricing, adultCount, kidCount, pwdCount, seniorCount, adultSwimming, kidSwimming, pwdSwimming, seniorSwimming, overnightSwimming, selectedTimeSlot, isNightOrWholeDay, isRoomFreeSwimming, totalSwimmingGuests])
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -760,17 +797,29 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
               <h4 className="text-lg font-bold mb-4 flex items-center gap-2">
                 <Droplet className="h-5 w-5 text-blue-500" />
                 Swimming Add-ons
+                {isRoomFreeSwimming && (
+                  <span className="text-xs font-normal bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-2 py-1 rounded-full">
+                    Included FREE
+                  </span>
+                )}
               </h4>
               <p className="text-sm text-muted-foreground mb-4">
-                Select which guests will be swimming (₱{pricing?.swimming.adult} per adult, ₱{pricing?.swimming.kids} per kid, ₱{pricing?.swimming.pwd} per PWD, ₱{pricing?.swimming.senior} per senior)
+                {isRoomFreeSwimming
+                  ? 'Swimming is included FREE for all Room bookings'
+                  : isNightOrWholeDay 
+                    ? `Select which guests will be swimming (₱${pricing?.night_swimming.per_head} per head)`
+                    : `Select which guests will be swimming (₱${pricing?.swimming.adult} per adult, ₱${pricing?.swimming.kids} per kid, ₱${pricing?.swimming.pwd} per PWD, ₱${pricing?.swimming.senior} per senior)`
+                }
               </p>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {/* Adult Swimming */}
                 {adultCount > 0 && (
-                  <div className="p-4 border rounded-lg bg-muted/30">
+                  <div className={`p-4 border rounded-lg ${isRoomFreeSwimming ? 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800' : 'bg-muted/30'}`}>
                     <div className="flex items-center justify-between mb-2">
                       <Label className="text-sm font-semibold">Adult Swimming</Label>
-                      <span className="text-xs text-muted-foreground">₱{pricing?.swimming.adult} each</span>
+                      <span className={`text-xs ${isRoomFreeSwimming ? 'text-green-600 dark:text-green-400 font-medium' : 'text-muted-foreground'}`}>
+                        {isRoomFreeSwimming ? 'FREE' : `₱${isNightOrWholeDay ? pricing?.night_swimming.per_head : pricing?.swimming.adult} each`}
+                      </span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Button 
@@ -795,18 +844,23 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
                         <Plus className="h-3 w-3" />
                       </Button>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Subtotal: ₱{(adultSwimming * (pricing?.swimming.adult || 0)).toLocaleString()}
+                    <p className={`text-xs mt-2 ${isRoomFreeSwimming ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'}`}>
+                      {isRoomFreeSwimming 
+                        ? 'Included in room booking'
+                        : `Subtotal: ₱${(adultSwimming * (isNightOrWholeDay ? (pricing?.night_swimming.per_head || 0) : (pricing?.swimming.adult || 0))).toLocaleString()}`
+                      }
                     </p>
                   </div>
                 )}
 
                 {/* Kid Swimming */}
                 {kidCount > 0 && (
-                  <div className="p-4 border rounded-lg bg-muted/30">
+                  <div className={`p-4 border rounded-lg ${isRoomFreeSwimming ? 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800' : 'bg-muted/30'}`}>
                     <div className="flex items-center justify-between mb-2">
                       <Label className="text-sm font-semibold">Kid Swimming</Label>
-                      <span className="text-xs text-muted-foreground">₱{pricing?.swimming.kids} each</span>
+                      <span className={`text-xs ${isRoomFreeSwimming ? 'text-green-600 dark:text-green-400 font-medium' : 'text-muted-foreground'}`}>
+                        {isRoomFreeSwimming ? 'FREE' : `₱${isNightOrWholeDay ? pricing?.night_swimming.per_head : pricing?.swimming.kids} each`}
+                      </span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Button 
@@ -831,18 +885,23 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
                         <Plus className="h-3 w-3" />
                       </Button>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Subtotal: ₱{(kidSwimming * (pricing?.swimming.kids || 0)).toLocaleString()}
+                    <p className={`text-xs mt-2 ${isRoomFreeSwimming ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'}`}>
+                      {isRoomFreeSwimming 
+                        ? 'Included in room booking'
+                        : `Subtotal: ₱${(kidSwimming * (isNightOrWholeDay ? (pricing?.night_swimming.per_head || 0) : (pricing?.swimming.kids || 0))).toLocaleString()}`
+                      }
                     </p>
                   </div>
                 )}
 
                 {/* PWD Swimming */}
                 {pwdCount > 0 && (
-                  <div className="p-4 border rounded-lg bg-muted/30">
+                  <div className={`p-4 border rounded-lg ${isRoomFreeSwimming ? 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800' : 'bg-muted/30'}`}>
                     <div className="flex items-center justify-between mb-2">
                       <Label className="text-sm font-semibold">PWD Swimming</Label>
-                      <span className="text-xs text-muted-foreground">₱{pricing?.swimming.pwd} each</span>
+                      <span className={`text-xs ${isRoomFreeSwimming ? 'text-green-600 dark:text-green-400 font-medium' : 'text-muted-foreground'}`}>
+                        {isRoomFreeSwimming ? 'FREE' : `₱${isNightOrWholeDay ? pricing?.night_swimming.per_head : pricing?.swimming.pwd} each`}
+                      </span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Button 
@@ -867,18 +926,23 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
                         <Plus className="h-3 w-3" />
                       </Button>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Subtotal: ₱{(pwdSwimming * (pricing?.swimming.pwd || 0)).toLocaleString()}
+                    <p className={`text-xs mt-2 ${isRoomFreeSwimming ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'}`}>
+                      {isRoomFreeSwimming 
+                        ? 'Included in room booking'
+                        : `Subtotal: ₱${(pwdSwimming * (isNightOrWholeDay ? (pricing?.night_swimming.per_head || 0) : (pricing?.swimming.pwd || 0))).toLocaleString()}`
+                      }
                     </p>
                   </div>
                 )}
 
                 {/* Senior Swimming */}
                 {seniorCount > 0 && (
-                  <div className="p-4 border rounded-lg bg-muted/30">
+                  <div className={`p-4 border rounded-lg ${isRoomFreeSwimming ? 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800' : 'bg-muted/30'}`}>
                     <div className="flex items-center justify-between mb-2">
                       <Label className="text-sm font-semibold">Senior Swimming</Label>
-                      <span className="text-xs text-muted-foreground">₱{pricing?.swimming.senior} each</span>
+                      <span className={`text-xs ${isRoomFreeSwimming ? 'text-green-600 dark:text-green-400 font-medium' : 'text-muted-foreground'}`}>
+                        {isRoomFreeSwimming ? 'FREE' : `₱${isNightOrWholeDay ? pricing?.night_swimming.per_head : pricing?.swimming.senior} each`}
+                      </span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Button 
@@ -903,12 +967,35 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
                         <Plus className="h-3 w-3" />
                       </Button>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Subtotal: ₱{(seniorSwimming * (pricing?.swimming.senior || 0)).toLocaleString()}
+                    <p className={`text-xs mt-2 ${isRoomFreeSwimming ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'}`}>
+                      {isRoomFreeSwimming 
+                        ? 'Included in room booking'
+                        : `Subtotal: ₱${(seniorSwimming * (isNightOrWholeDay ? (pricing?.night_swimming.per_head || 0) : (pricing?.swimming.senior || 0))).toLocaleString()}`
+                      }
                     </p>
                   </div>
                 )}
               </div>
+              
+              {/* Night/Whole Day Swimming Notice - Only for Cottages */}
+              {isNightOrWholeDay && !isRoomFreeSwimming && totalSwimmingGuests > 0 && (
+                <div className="p-3 bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800 rounded-lg mt-4">
+                  <p className="text-sm text-indigo-700 dark:text-indigo-300">
+                    <Moon className="h-4 w-4 inline mr-2" />
+                    <strong>Night Swimming Rate Applied:</strong> All swimming guests are charged ₱{pricing?.night_swimming.per_head} per head for {selectedTimeSlot === 'whole_day' ? 'Whole Day' : 'Night'} bookings.
+                  </p>
+                </div>
+              )}
+              
+              {/* Rooms FREE Swimming Notice */}
+              {isRoomFreeSwimming && totalSwimmingGuests > 0 && (
+                <div className="p-3 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg mt-4">
+                  <p className="text-sm text-green-700 dark:text-green-300">
+                    <Droplet className="h-4 w-4 inline mr-2" />
+                    <strong>Swimming Included FREE:</strong> All room bookings include free swimming for all guests.
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
@@ -1062,13 +1149,24 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
                   <Checkbox 
                     id="overnight-swimming" 
                     checked={overnightSwimming}
-                    onCheckedChange={(checked) => setOvernightSwimming(checked as boolean)}
+                    onCheckedChange={(checked) => {
+                      // Only allow unchecking if not Night/Whole Day
+                      if (!isNightOrWholeDay) {
+                        setOvernightSwimming(checked as boolean)
+                      }
+                    }}
+                    disabled={isNightOrWholeDay}
                   />
                   <Label 
                     htmlFor="overnight-swimming" 
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                    className={`text-sm font-medium leading-none cursor-pointer ${isNightOrWholeDay ? 'text-muted-foreground' : ''}`}
                   >
                     Overnight Swimming (Night Swimming - ₱{pricing.night_swimming.per_head.toLocaleString('en-PH')} per head)
+                    {isNightOrWholeDay && (
+                      <span className="ml-2 text-xs text-indigo-600 dark:text-indigo-400">
+                        (Auto-included for {selectedTimeSlot === 'whole_day' ? 'Whole Day' : 'Night'} bookings)
+                      </span>
+                    )}
                   </Label>
                 </div>
               )}
@@ -1152,7 +1250,8 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
                 </div>
               )}
 
-              {adultSwimming > 0 && (
+              {/* Morning Swimming Fees - Cottages: Individual rates, Rooms: FREE */}
+              {adultSwimming > 0 && !isNightOrWholeDay && !isRoomFreeSwimming && (
                 <div className="flex justify-between text-sm">
                   <span>Adults ({adultSwimming}) - Swimming Fee</span>
                   <span className="font-medium">
@@ -1161,7 +1260,7 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
                 </div>
               )}
 
-              {kidSwimming > 0 && (
+              {kidSwimming > 0 && !isNightOrWholeDay && !isRoomFreeSwimming && (
                 <div className="flex justify-between text-sm">
                   <span>Kids ({kidSwimming}) - Swimming Fee</span>
                   <span className="font-medium">
@@ -1170,7 +1269,7 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
                 </div>
               )}
 
-              {pwdSwimming > 0 && (
+              {pwdSwimming > 0 && !isNightOrWholeDay && !isRoomFreeSwimming && (
                 <div className="flex justify-between text-sm">
                   <span>PWD ({pwdSwimming}) - Swimming Fee</span>
                   <span className="font-medium">
@@ -1179,7 +1278,7 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
                 </div>
               )}
 
-              {seniorSwimming > 0 && (
+              {seniorSwimming > 0 && !isNightOrWholeDay && !isRoomFreeSwimming && (
                 <div className="flex justify-between text-sm">
                   <span>Senior ({seniorSwimming}) - Swimming Fee</span>
                   <span className="font-medium">
@@ -1188,11 +1287,30 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
                 </div>
               )}
               
-              {overnightSwimming && accommodation.type === 'cottage' && (adultSwimming + kidSwimming + pwdSwimming + seniorSwimming) > 0 && (
+              {/* Rooms FREE Swimming - All time slots */}
+              {isRoomFreeSwimming && totalSwimmingGuests > 0 && (
                 <div className="flex justify-between text-sm">
-                  <span>Night Swimming ({adultSwimming + kidSwimming + pwdSwimming + seniorSwimming} guests)</span>
+                  <span>Swimming ({totalSwimmingGuests} {totalSwimmingGuests === 1 ? 'guest' : 'guests'}) - Included</span>
+                  <span className="font-medium text-green-600 dark:text-green-400">FREE</span>
+                </div>
+              )}
+              
+              {/* Night/Whole Day Swimming - Cottages only: ₱200/head */}
+              {isNightOrWholeDay && !isRoomFreeSwimming && totalSwimmingGuests > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span>Night Swimming ({totalSwimmingGuests} {totalSwimmingGuests === 1 ? 'guest' : 'guests'}) @ ₱{pricing.night_swimming.per_head}/head</span>
                   <span className="font-medium">
-                    ₱{((adultSwimming + kidSwimming + pwdSwimming + seniorSwimming) * pricing.night_swimming.per_head).toFixed(2)}
+                    ₱{(totalSwimmingGuests * pricing.night_swimming.per_head).toFixed(2)}
+                  </span>
+                </div>
+              )}
+              
+              {/* Cottage overnight swimming add-on (only for morning slot) */}
+              {overnightSwimming && accommodation.type === 'cottage' && !isNightOrWholeDay && totalSwimmingGuests > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span>Night Swimming Add-on ({totalSwimmingGuests} {totalSwimmingGuests === 1 ? 'guest' : 'guests'})</span>
+                  <span className="font-medium">
+                    ₱{(totalSwimmingGuests * pricing.night_swimming.per_head).toFixed(2)}
                   </span>
                 </div>
               )}

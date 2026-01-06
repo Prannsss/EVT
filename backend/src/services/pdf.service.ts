@@ -119,8 +119,8 @@ export const generateLogBookReport = (res: Response, data: ReportData): void => 
 function renderGuestListSection(doc: PDFKit.PDFDocument, data: ReportData): void {
   renderSectionTitle(doc, 'Guest List Report', true);
 
-  const colWidths = [240, 150, 150, 200];
-  const headers = ['Guest Name', 'Type', 'Date', 'Source'];
+  const colWidths = [180, 150, 100, 100, 150];
+  const headers = ['Guest Name', 'Address', 'Type', 'Date', 'Source'];
   
   renderTableHeader(doc, headers, colWidths);
 
@@ -136,7 +136,7 @@ function renderGuestListSection(doc: PDFKit.PDFDocument, data: ReportData): void
         if (Array.isArray(guests)) {
           guests.forEach((guest: any) => {
             if (guest.name && guest.name.trim()) {
-              renderGuestRow(doc, guest.name, guest.type || 'Adult', booking.check_in_date, 'Online Booking', colWidths);
+              renderGuestRow(doc, guest.name, guest.address || 'N/A', guest.type || 'Adult', booking.check_in_date, 'Online Booking', colWidths);
               totalGuests++;
             }
           });
@@ -156,7 +156,7 @@ function renderGuestListSection(doc: PDFKit.PDFDocument, data: ReportData): void
         if (Array.isArray(guests)) {
           guests.forEach((guest: any) => {
             if (guest.name && guest.name.trim()) {
-              renderGuestRow(doc, guest.name, guest.type || 'Adult', log.check_in_date, 'Walk-In', colWidths);
+              renderGuestRow(doc, guest.name, guest.address || 'N/A', guest.type || 'Adult', log.check_in_date, 'Walk-In', colWidths);
               totalGuests++;
             }
           });
@@ -166,7 +166,7 @@ function renderGuestListSection(doc: PDFKit.PDFDocument, data: ReportData): void
         const names = log.guest_names.split(',');
         names.forEach(name => {
           if (name.trim()) {
-            renderGuestRow(doc, name.trim(), 'Walk-In Guest', log.check_in_date, 'Walk-In', colWidths);
+            renderGuestRow(doc, name.trim(), 'N/A', 'Walk-In Guest', log.check_in_date, 'Walk-In', colWidths);
             totalGuests++;
           }
         });
@@ -179,9 +179,10 @@ function renderGuestListSection(doc: PDFKit.PDFDocument, data: ReportData): void
   renderTotalRow(doc, colWidths, 'Total Guests:', totalGuests.toString());
 }
 
-function renderGuestRow(doc: PDFKit.PDFDocument, name: string, type: string, date: string, source: string, colWidths: number[]) {
+function renderGuestRow(doc: PDFKit.PDFDocument, name: string, address: string, type: string, date: string, source: string, colWidths: number[]) {
   const rowData = [
     { text: name, color: COLORS.text, align: 'left' as const },
+    { text: address, color: COLORS.text, align: 'left' as const },
     { text: type.charAt(0).toUpperCase() + type.slice(1), color: COLORS.text, align: 'left' as const },
     { text: formatDate(date), color: COLORS.text, align: 'left' as const },
     { text: source, color: COLORS.text, align: 'left' as const },
@@ -592,10 +593,14 @@ function formatGuestNames(guestNamesStr?: string | null): string {
   try {
     const guests = JSON.parse(guestNamesStr);
     if (Array.isArray(guests)) {
-      const names = guests
+      const formatted = guests
         .filter((g: any) => g.name && g.name.trim())
-        .map((g: any) => g.name.trim());
-      return names.length > 0 ? names.join(', ') : '-';
+        .map((g: any) => {
+          const name = g.name.trim();
+          const address = g.address ? ` (${g.address.trim()})` : '';
+          return `${name}${address}`;
+        });
+      return formatted.length > 0 ? formatted.join(', ') : '-';
     }
   } catch (e) {
     return guestNamesStr;

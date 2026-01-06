@@ -68,6 +68,7 @@ interface Accommodation {
 interface Guest {
   id: string;
   name: string;
+  address: string;
   type: 'adult' | 'kid' | 'senior' | 'pwd';
 }
 
@@ -118,7 +119,7 @@ export default function WalkInPage() {
 
   // Guest list state
   const [guests, setGuests] = useState<Guest[]>([
-    { id: crypto.randomUUID(), name: '', type: 'adult' }
+    { id: crypto.randomUUID(), name: '', address: '', type: 'adult' }
   ]);
 
   // Accommodation type state
@@ -310,12 +311,17 @@ export default function WalkInPage() {
     try {
       if (log.guest_names) {
         const parsedGuests = JSON.parse(log.guest_names) as Guest[];
-        setGuests(parsedGuests.length > 0 ? parsedGuests : [{ id: crypto.randomUUID(), name: '', type: 'adult' }]);
+        // Ensure each guest has an address field (for backwards compatibility)
+        const guestsWithAddress = parsedGuests.map(g => ({
+          ...g,
+          address: g.address || ''
+        }));
+        setGuests(guestsWithAddress.length > 0 ? guestsWithAddress : [{ id: crypto.randomUUID(), name: '', address: '', type: 'adult' }]);
       } else {
-        setGuests([{ id: crypto.randomUUID(), name: '', type: 'adult' }]);
+        setGuests([{ id: crypto.randomUUID(), name: '', address: '', type: 'adult' }]);
       }
     } catch {
-      setGuests([{ id: crypto.randomUUID(), name: '', type: 'adult' }]);
+      setGuests([{ id: crypto.randomUUID(), name: '', address: '', type: 'adult' }]);
     }
 
     setIsDialogOpen(true);
@@ -406,7 +412,7 @@ export default function WalkInPage() {
 
   const resetForm = () => {
     setEditingLog(null);
-    setGuests([{ id: crypto.randomUUID(), name: '', type: 'adult' }]);
+    setGuests([{ id: crypto.randomUUID(), name: '', address: '', type: 'adult' }]);
     setAccommodationType('');
     setSelectedTimeSlot('morning');
     setFormData({
@@ -419,7 +425,7 @@ export default function WalkInPage() {
   };
 
   const addGuest = () => {
-    setGuests([...guests, { id: crypto.randomUUID(), name: '', type: 'adult' }]);
+    setGuests([...guests, { id: crypto.randomUUID(), name: '', address: '', type: 'adult' }]);
   };
 
   const removeGuest = (id: string) => {
@@ -434,7 +440,7 @@ export default function WalkInPage() {
     setGuests(guests.filter(guest => guest.id !== id));
   };
 
-  const updateGuest = (id: string, field: 'name' | 'type', value: string) => {
+  const updateGuest = (id: string, field: 'name' | 'address' | 'type', value: string) => {
     setGuests(guests.map(guest => 
       guest.id === id ? { ...guest, [field]: value } : guest
     ));
@@ -485,7 +491,7 @@ export default function WalkInPage() {
               Add Walk-In
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 {editingLog ? 'Edit Walk-In Log' : 'Add Walk-In Guest'}
@@ -510,58 +516,59 @@ export default function WalkInPage() {
 
                 <div className="col-span-2">
                   <div className="flex items-center justify-between mb-2">
-                    <Label>Guest Names</Label>
+                    <Label>Guest Names & Addresses</Label>
                     <Button type="button" size="sm" className="text-primary" variant="outline" onClick={addGuest}>
                       <Plus className="w-4 h-4 mr-1 text-primary" />
                       Add Guest
                     </Button>
                   </div>
-                  <div className="space-y-2">
-                    {guests.map((guest) => (
-                      <div key={guest.id} className="flex items-center gap-2">
-                        <Input
-                          placeholder="Guest name"
-                          value={guest.name}
-                          onChange={(e) => updateGuest(guest.id, 'name', e.target.value)}
-                          className="flex-1"
-                        />
-                        <Select
-                          value={guest.type}
-                          onValueChange={(value) => updateGuest(guest.id, 'type', value)}
-                        >
-                          <SelectTrigger className="w-[140px]">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="adult">Adult</SelectItem>
-                            <SelectItem value="kid">Kid</SelectItem>
-                            <SelectItem value="senior">Senior</SelectItem>
-                            <SelectItem value="pwd">PWD</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <Button
-                          type="button"
-                          size="icon"
-                          variant="ghost"
-                          onClick={() => removeGuest(guest.id)}
-                          disabled={guests.length === 1}
-                        >
-                          <X className="w-4 h-4" />
-                        </Button>
+                  <div className="space-y-3">
+                    {guests.map((guest, index) => (
+                      <div key={guest.id} className="p-3 border rounded-lg space-y-2 bg-muted/30">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-medium text-muted-foreground w-16">Guest {index + 1}</span>
+                          <Input
+                            placeholder="Guest name"
+                            value={guest.name}
+                            onChange={(e) => updateGuest(guest.id, 'name', e.target.value)}
+                            className="flex-1"
+                          />
+                          <Select
+                            value={guest.type}
+                            onValueChange={(value) => updateGuest(guest.id, 'type', value)}
+                          >
+                            <SelectTrigger className="w-[120px]">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="adult">Adult</SelectItem>
+                              <SelectItem value="kid">Kid</SelectItem>
+                              <SelectItem value="senior">Senior</SelectItem>
+                              <SelectItem value="pwd">PWD</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => removeGuest(guest.id)}
+                            disabled={guests.length === 1}
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
+                        <div className="flex items-center gap-2 pl-16">
+                          <MapPin className="w-4 h-4 text-muted-foreground" />
+                          <Input
+                            placeholder="Address"
+                            value={guest.address}
+                            onChange={(e) => updateGuest(guest.id, 'address', e.target.value)}
+                            className="flex-1"
+                          />
+                        </div>
                       </div>
                     ))}
                   </div>
-                </div>
-
-                <div className="col-span-2">
-                  <Label htmlFor="address">Address</Label>
-                  <Input
-                    id="address"
-                    value={formData.address}
-                    onChange={(e) =>
-                      setFormData({ ...formData, address: e.target.value })
-                    }
-                  />
                 </div>
 
                 <div className="col-span-2">
@@ -1012,13 +1019,6 @@ export default function WalkInPage() {
                     <p className="font-medium">{selectedLog.client_name}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Address</p>
-                    <p className="font-medium flex items-center gap-2">
-                      <MapPin className="w-4 h-4" />
-                      {selectedLog.address || 'N/A'}
-                    </p>
-                  </div>
-                  <div>
                     <p className="text-sm text-muted-foreground">Status</p>
                     <Badge
                       variant={selectedLog.checked_out ? 'default' : 'outline'}
@@ -1104,9 +1104,17 @@ export default function WalkInPage() {
                             <p className="text-sm text-muted-foreground mb-2">Guest List</p>
                             <div className="space-y-2">
                               {guests.map((guest, index) => (
-                                <div key={index} className="flex items-center justify-between p-2 bg-background rounded border">
-                                  <span className="font-medium">{guest.name || `Guest ${index + 1}`}</span>
-                                  <Badge variant="outline" className="capitalize">{guest.type}</Badge>
+                                <div key={index} className="p-2 bg-background rounded border space-y-1">
+                                  <div className="flex items-center justify-between">
+                                    <span className="font-medium">{guest.name || `Guest ${index + 1}`}</span>
+                                    <Badge variant="outline" className="capitalize">{guest.type}</Badge>
+                                  </div>
+                                  {guest.address && (
+                                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                                      <MapPin className="w-3 h-3" />
+                                      {guest.address}
+                                    </div>
+                                  )}
                                 </div>
                               ))}
                             </div>
