@@ -175,9 +175,21 @@ export default function WalkInPage() {
         if (response.ok) {
           const data = await response.json();
           console.log('Available accommodations response:', data);
-          // Access data.data.availableAccommodationIds since response is wrapped in successResponse
-          const ids = data.data?.availableAccommodationIds || data.availableAccommodationIds || [];
-          console.log('Extracted available IDs:', ids);
+          
+          // Robustly extract availableAccommodationIds from response
+          // Handle different response structures: data.data.availableAccommodationIds or data.availableAccommodationIds
+          let ids: number[] = [];
+          
+          if (data?.data?.availableAccommodationIds && Array.isArray(data.data.availableAccommodationIds)) {
+            ids = data.data.availableAccommodationIds;
+          } else if (data?.availableAccommodationIds && Array.isArray(data.availableAccommodationIds)) {
+            ids = data.availableAccommodationIds;
+          }
+          
+          // Ensure all IDs are valid numbers and filter out any invalid values
+          ids = ids.filter(id => typeof id === 'number' && id > 0 && Number.isInteger(id));
+          
+          console.log('Extracted and validated available IDs:', ids);
           setAvailableAccommodations(ids);
         } else {
           console.error('Failed to fetch available accommodations:', response.status);
@@ -671,16 +683,6 @@ export default function WalkInPage() {
                     <Label htmlFor="accommodation_id">
                       {accommodationType === 'room' ? 'Select Room' : 'Select Cottage'}
                     </Label>
-                    {/* Debug info */}
-                    {console.log('Filtering accommodations:', {
-                      allAccommodations: accommodations.map(a => ({ id: a.id, name: a.name, type: a.type })),
-                      availableIds: availableAccommodations,
-                      accommodationType,
-                      filtered: accommodations.filter(acc => 
-                        acc.type === accommodationType && 
-                        availableAccommodations.includes(acc.id)
-                      ).map(a => ({ id: a.id, name: a.name }))
-                    })}
                     <Select
                       value={formData.accommodation_id}
                       onValueChange={(value) => {
