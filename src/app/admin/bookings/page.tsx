@@ -219,11 +219,18 @@ export default function BookingsPage() {
         throw new Error(data.message || 'Failed to approve booking');
       }
 
+      // Show success message including auto-rejection count if any
+      const rejectedCount = data.data?.rejectedCount || 0;
+      const baseMessage = isEventBooking 
+        ? "Event booking approved successfully" 
+        : "Booking approved successfully";
+      const description = rejectedCount > 0 
+        ? `${baseMessage}. ${rejectedCount} conflicting request(s) were automatically rejected and clients notified.`
+        : baseMessage;
+
       toast({
         title: "Success",
-        description: isEventBooking 
-          ? "Event booking approved successfully" 
-          : "Booking approved successfully",
+        description,
       });
 
       setIsApproveModalOpen(false);
@@ -358,7 +365,10 @@ export default function BookingsPage() {
     }
   };
 
-  const requestsData = bookings.filter(b => b.status === 'pending');
+  // Sort requests by created_at ascending (earliest first - first come, first served)
+  const requestsData = bookings
+    .filter(b => b.status === 'pending')
+    .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
   const approvedData = bookings.filter(b => b.status === 'approved');
   const completedData = bookings.filter(b => b.status === 'completed');
   const cancelledData = bookings.filter(b => b.status === 'cancelled' || b.status === 'rejected');
@@ -1114,13 +1124,21 @@ export default function BookingsPage() {
               Approve Booking
             </DialogTitle>
             <DialogDescription>
-              Are you sure you want to approve this booking?
+              Are you sure you want to approve this booking request?
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4">
+          <div className="py-4 space-y-3">
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+              <p className="text-sm text-amber-800 font-medium">
+                ⚠️ Important Notice
+              </p>
+              <p className="text-sm text-amber-700 mt-1">
+                All other requests with the same accommodation, date, and time slot will be automatically rejected.
+              </p>
+            </div>
             <p className="text-sm text-muted-foreground">
               This will confirm the reservation and send a confirmation email to the client. 
-              The accommodation will be marked as booked for the selected dates.
+              Rejected clients will receive an email notification about their payment refund.
             </p>
           </div>
           <div className="flex gap-3 justify-end">

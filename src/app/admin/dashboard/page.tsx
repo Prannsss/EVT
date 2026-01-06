@@ -7,11 +7,9 @@ import { API_URL } from '@/lib/utils';
 import {
   Users,
   Calendar,
-  Banknote,
   TrendingUp,
   ArrowUpRight,
   ArrowDownRight,
-  MoreHorizontal,
   Loader2,
   AlertCircle,
   RefreshCw,
@@ -27,12 +25,6 @@ import {
   Legend,
 } from 'chart.js';
 import { Badge } from '@/components/ui/badge';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import {
   Table,
   TableBody,
@@ -124,6 +116,7 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
 
   useEffect(() => {
     fetchBookings();
@@ -242,17 +235,29 @@ export default function DashboardPage() {
     confirmedBookings: bookings.filter(b => 
       b.status === 'confirmed' || b.status === 'approved' || b.status === 'completed'
     ).length,
-    totalRevenue: bookings
-      .filter(b => b.status === 'confirmed' || b.status === 'approved' || b.status === 'completed')
-      .reduce((sum, b) => sum + Number(b.total_price), 0),
     pendingBookings: bookings.filter(b => b.status === 'pending').length,
   };
 
-  // Calculate monthly data for chart
+  // Generate dynamic years starting from 2025 up to current year + 1
+  const generateYears = () => {
+    const currentYear = new Date().getFullYear();
+    const years: number[] = [];
+    for (let year = 2025; year <= Math.max(currentYear + 1, 2026); year++) {
+      years.push(year);
+    }
+    return years;
+  };
+  const availableYears = generateYears();
+
+  // Calculate monthly data for chart filtered by selected year
   const monthlyData = Array(12).fill(0);
   bookings.forEach(booking => {
-    const month = new Date(booking.check_in).getMonth();
-    monthlyData[month]++;
+    const checkInDate = new Date(booking.check_in);
+    const bookingYear = checkInDate.getFullYear();
+    if (bookingYear === selectedYear) {
+      const month = checkInDate.getMonth();
+      monthlyData[month]++;
+    }
   });
 
   const monthlyReservationData = {
@@ -283,14 +288,6 @@ export default function DashboardPage() {
       change: '+0%',
       trend: 'up',
       icon: Users,
-      color: 'from-blue-600 to-sky-400',
-    },
-    {
-      title: 'Revenue',
-      value: `₱${stats.totalRevenue.toLocaleString()}`,
-      change: '+0%',
-      trend: 'up',
-      icon: Banknote,
       color: 'from-blue-600 to-sky-400',
     },
     {
@@ -350,7 +347,7 @@ export default function DashboardPage() {
       </div>
       
       {/* Stats Grid */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8">
+      <div className="grid gap-6 md:grid-cols-3 mb-8">
         {statsCards.map((stat, index) => {
           const Icon = stat.icon;
           const TrendIcon = stat.trend === 'up' ? ArrowUpRight : ArrowDownRight;
@@ -399,15 +396,14 @@ export default function DashboardPage() {
                 <CardTitle className="text-xl">Monthly Reservations</CardTitle>
                 <CardDescription>Reservation trends throughout the year</CardDescription>
               </div>
-              <Select defaultValue="2025">
+              <Select value={selectedYear.toString()} onValueChange={(value) => setSelectedYear(parseInt(value))}>
                 <SelectTrigger className="w-[100px]">
                   <SelectValue placeholder="Select year" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="2023">2023</SelectItem>
-                  <SelectItem value="2024">2024</SelectItem>
-                  <SelectItem value="2025">2025</SelectItem>
-                  <SelectItem value="2026">2026</SelectItem>
+                  {availableYears.map((year) => (
+                    <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -448,7 +444,6 @@ export default function DashboardPage() {
                     <TableHead>Client</TableHead>
                     <TableHead>Room</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -479,22 +474,6 @@ export default function DashboardPage() {
                         >
                           {booking.status}
                         </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem>View Details</DropdownMenuItem>
-                            <DropdownMenuItem>Edit Booking</DropdownMenuItem>
-                            <DropdownMenuItem className="text-red-600">
-                              Cancel Booking
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
                   ))}

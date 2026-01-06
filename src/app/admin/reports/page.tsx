@@ -58,6 +58,7 @@ export default function ReportsPage() {
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [selectedBookingId, setSelectedBookingId] = useState<string>('');
   const [guestEntries, setGuestEntries] = useState<GuestEntry[]>([]);
+  const [address, setAddress] = useState<string>('');
   const [savingLog, setSavingLog] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
@@ -212,7 +213,10 @@ export default function ReportsPage() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ guest_names: guestNames }),
+        body: JSON.stringify({ 
+          guest_names: guestNames,
+          address: address.trim()
+        }),
       });
 
       if (response.ok) {
@@ -223,6 +227,7 @@ export default function ReportsPage() {
         setSelectedClient('');
         setSelectedBooking(null);
         setGuestEntries([]);
+        setAddress('');
       } else {
         throw new Error('Failed to save log');
       }
@@ -488,9 +493,19 @@ export default function ReportsPage() {
                   ))}
                 </div>
 
+                <div className="space-y-2 pt-2">
+                  <Label htmlFor="address">Address</Label>
+                  <Input
+                    id="address"
+                    placeholder="Enter client address"
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                  />
+                </div>
+
                 <Button
                   onClick={handleSaveLogClick}
-                  disabled={savingLog || guestEntries.some(e => !e.name.trim())}
+                  disabled={savingLog || guestEntries.some(e => !e.name.trim()) || !address.trim()}
                   className="w-full"
                 >
                   {savingLog ? (

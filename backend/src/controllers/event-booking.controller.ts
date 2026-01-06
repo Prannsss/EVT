@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { pool } from '../config/db.js';
+import { RowDataPacket } from 'mysql2';
 import {
   getAllEventBookings,
   getEventBookingById,
@@ -10,7 +11,7 @@ import {
 } from '../models/event-booking.model.js';
 import { findUserById } from '../models/user.model.js';
 import { checkEventBookingAvailability } from '../services/availability.service.js';
-import { sendCheckOutThankYouEmail, sendBookingNotificationEmail } from '../services/email.service.js';
+import { sendCheckOutThankYouEmail, sendBookingNotificationEmail, sendAutoRejectionWithRefundEmail } from '../services/email.service.js';
 import { successResponse, errorResponse } from '../utils/response.js';
 
 export const getEventBookings = async (req: Request, res: Response) => {
@@ -209,6 +210,61 @@ export const approveEventBooking = async (req: Request, res: Response) => {
       return res.status(400).json(errorResponse('Approval failed', 400));
     }
 
+    // Auto-reject conflicting pending event bookings with same date and time slot
+    // For event bookings: morning conflicts with morning, evening conflicts with evening, whole_day conflicts with all
+    const eventType = booking.event_type;
+    const bookingDate = booking.booking_date.toString().split('T')[0];
+    
+    let conflictQuery = `
+      SELECT eb.*, u.name as user_name, u.email as user_email
+      FROM event_bookings eb
+      LEFT JOIN users u ON eb.user_id = u.id
+      WHERE eb.booking_date = ?
+      AND eb.status = 'pending'
+      AND eb.id != ?
+    `;
+
+    // Determine which event types to reject based on the approved booking type
+    if (eventType === 'whole_day') {
+      // Whole day booking conflicts with all time slots
+      conflictQuery += ` AND eb.event_type IN ('morning', 'evening', 'whole_day')`;
+    } else {
+      // Morning/evening only conflicts with same time slot or whole_day
+      conflictQuery += ` AND (eb.event_type = ? OR eb.event_type = 'whole_day')`;
+    }
+
+    const queryParams = eventType === 'whole_day' 
+      ? [bookingDate, id]
+      : [bookingDate, id, eventType];
+
+    const conflictingBookings = await pool.query<RowDataPacket[]>(conflictQuery, queryParams);
+    const conflicting = conflictingBookings[0] as RowDataPacket[];
+    let rejectedCount = 0;
+
+    // Auto-reject each conflicting event booking and send refund notification
+    for (const conflictBooking of conflicting) {
+      await updateEventBooking(conflictBooking.id, { status: 'rejected' });
+      rejectedCount++;
+
+      // Send auto-rejection email with refund notice
+      if (conflictBooking.user_email) {
+        const eventTypeLabels: Record<string, string> = {
+          morning: 'Morning Event',
+          evening: 'Evening Event',
+          whole_day: 'Whole Day Event'
+        };
+
+        await sendAutoRejectionWithRefundEmail({
+          to: conflictBooking.user_email,
+          clientName: conflictBooking.user_name || 'Valued Customer',
+          bookingId: conflictBooking.id,
+          accommodation: `Event: ${conflictBooking.event_type.replace('_', ' ').toUpperCase()}`,
+          checkIn: bookingDate,
+          timeSlot: eventTypeLabels[conflictBooking.event_type] || conflictBooking.event_type,
+        });
+      }
+    }
+
     // Send approval notification email
     const user = await findUserById(booking.user_id);
     if (user) {
@@ -218,11 +274,15 @@ export const approveEventBooking = async (req: Request, res: Response) => {
         status: 'approved',
         bookingId: id,
         accommodation: `Event: ${booking.event_type.replace('_', ' ').toUpperCase()}`,
-        checkIn: booking.booking_date.toString().split('T')[0],
+        checkIn: bookingDate,
       });
     }
 
-    res.json(successResponse(null, 'Event booking approved successfully'));
+    const message = rejectedCount > 0 
+      ? `Event booking approved successfully. ${rejectedCount} conflicting request(s) were automatically rejected.`
+      : 'Event booking approved successfully';
+
+    res.json(successResponse({ rejectedCount }, message));
   } catch (error: any) {
     console.error('Approve event booking error:', error);
     res.status(500).json(errorResponse(error.message));

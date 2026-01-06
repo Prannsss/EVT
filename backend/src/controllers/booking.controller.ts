@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { pool } from '../config/db.js';
+import { RowDataPacket } from 'mysql2';
 import {
   getAllBookings,
   getBookingById,
@@ -10,7 +11,7 @@ import {
 } from '../models/booking.model.js';
 import { getAccommodationById, updateAccommodationStatus } from '../models/accommodation.model.js';
 import { findUserById } from '../models/user.model.js';
-import { sendBookingConfirmation, sendBookingNotificationEmail, sendCheckOutThankYouEmail } from '../services/email.service.js';
+import { sendBookingConfirmation, sendBookingNotificationEmail, sendCheckOutThankYouEmail, sendAutoRejectionWithRefundEmail } from '../services/email.service.js';
 import { checkRegularBookingAvailability, TimeSlotType, TIME_SLOTS } from '../services/availability.service.js';
 import { successResponse, errorResponse } from '../utils/response.js';
 
@@ -316,6 +317,47 @@ export const approveBooking = async (req: Request, res: Response) => {
     };
     await updateAccommodationStatus(booking.accommodation_id, statusMap[timeSlot]);
 
+    // Auto-reject conflicting pending bookings with same accommodation, date, and time slot
+    const conflictingBookings = await pool.query<RowDataPacket[]>(
+      `SELECT b.*, u.name as user_name, u.email as user_email, a.name as accommodation_name
+       FROM bookings b
+       LEFT JOIN users u ON b.user_id = u.id
+       LEFT JOIN accommodations a ON b.accommodation_id = a.id
+       WHERE b.accommodation_id = ?
+       AND b.check_in_date = ?
+       AND b.time_slot = ?
+       AND b.status = 'pending'
+       AND b.id != ?`,
+      [booking.accommodation_id, booking.check_in_date, timeSlot, id]
+    );
+
+    const conflicting = conflictingBookings[0] as RowDataPacket[];
+    let rejectedCount = 0;
+
+    // Auto-reject each conflicting booking and send refund notification
+    for (const conflictBooking of conflicting) {
+      await updateBooking(conflictBooking.id, { status: 'rejected' });
+      rejectedCount++;
+
+      // Send auto-rejection email with refund notice
+      if (conflictBooking.user_email) {
+        const timeSlotLabels: Record<string, string> = {
+          morning: 'Morning (9 AM - 5 PM)',
+          night: 'Night (5:30 PM - 8 AM)',
+          whole_day: 'Whole Day (9 AM - 8 AM)'
+        };
+
+        await sendAutoRejectionWithRefundEmail({
+          to: conflictBooking.user_email,
+          clientName: conflictBooking.user_name || 'Valued Customer',
+          bookingId: conflictBooking.id,
+          accommodation: conflictBooking.accommodation_name || `Accommodation #${conflictBooking.accommodation_id}`,
+          checkIn: conflictBooking.check_in_date,
+          timeSlot: timeSlotLabels[conflictBooking.time_slot] || conflictBooking.time_slot,
+        });
+      }
+    }
+
     // Send approval notification email
     const user = await findUserById(booking.user_id);
     const accommodation = await getAccommodationById(booking.accommodation_id);
@@ -331,7 +373,11 @@ export const approveBooking = async (req: Request, res: Response) => {
       });
     }
 
-    res.json(successResponse(null, 'Booking approved successfully'));
+    const message = rejectedCount > 0 
+      ? `Booking approved successfully. ${rejectedCount} conflicting request(s) were automatically rejected.`
+      : 'Booking approved successfully';
+
+    res.json(successResponse({ rejectedCount }, message));
   } catch (error: any) {
     console.error('Approve booking error:', error);
     res.status(500).json(errorResponse(error.message));

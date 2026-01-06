@@ -17,6 +17,7 @@ export interface Booking {
   pwd_swimming: number;
   senior_swimming: number;
   guest_names: string | null;
+  address: string;
   overnight_stay: boolean;
   overnight_swimming: boolean;
   total_price: number;
@@ -53,5 +54,6 @@ export interface BookingUpdate {
   time_slot?: TimeSlotType;
   proof_of_payment_url?: string;
   guest_names?: string;
+  address?: string;
   checked_out_at?: string;
 }

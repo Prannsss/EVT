@@ -54,13 +54,59 @@ export default function AdminCalendarPage() {
     fetchBookings();
   }, []);
 
+  // Helper function to get time slot key (defined here for use in useEffect)
+  const getBookingTimeSlotKey = (booking: Booking): string => {
+    if (booking.booking_type === 'event') {
+      return booking.event_type || 'whole_day';
+    }
+    return booking.time_slot || 'morning';
+  };
+
+  // Helper function to filter bookings for a date (defined here for use in useEffect)
+  const filterBookingsForDate = (date: Date, allBookings: Booking[]): Booking[] => {
+    const dateBookings = allBookings.filter(b => isSameDay(new Date(b.check_in_date), date));
+    
+    if (dateBookings.length === 0) return [];
+
+    // Group bookings by accommodation + time slot
+    const groupedBookings = new Map<string, Booking[]>();
+    
+    dateBookings.forEach(booking => {
+      const accommodationKey = booking.booking_type === 'event' 
+        ? `event_${booking.event_type}` 
+        : `${booking.accommodation_id}_${getBookingTimeSlotKey(booking)}`;
+      
+      if (!groupedBookings.has(accommodationKey)) {
+        groupedBookings.set(accommodationKey, []);
+      }
+      groupedBookings.get(accommodationKey)!.push(booking);
+    });
+
+    // For each group, apply visibility rules
+    const filteredBookings: Booking[] = [];
+    
+    groupedBookings.forEach((groupBookings) => {
+      // Check if there's an approved booking in this group
+      const approvedBooking = groupBookings.find(b => b.status === 'approved');
+      
+      if (approvedBooking) {
+        // If approved booking exists, show only the approved one
+        filteredBookings.push(approvedBooking);
+      } else {
+        // No approved booking, show all pending bookings
+        const pendingBookings = groupBookings.filter(b => b.status === 'pending');
+        filteredBookings.push(...pendingBookings);
+      }
+    });
+
+    return filteredBookings;
+  };
+
   useEffect(() => {
     if (selectedDate && bookings.length > 0) {
-      const dateBookings = bookings.filter(b => 
-        isSameDay(new Date(b.check_in_date), selectedDate)
-      );
-      if (dateBookings.length > 0) {
-        setSelectedReservation(dateBookings[currentBookingIndex] || dateBookings[0]);
+      const filteredBookings = filterBookingsForDate(selectedDate, bookings);
+      if (filteredBookings.length > 0) {
+        setSelectedReservation(filteredBookings[currentBookingIndex] || filteredBookings[0]);
       } else {
         setSelectedReservation(undefined);
         setCurrentBookingIndex(0);
@@ -121,7 +167,12 @@ export default function AdminCalendarPage() {
         (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       );
 
-      setBookings(allBookings);
+      // Filter out rejected and cancelled bookings - they should not appear on calendar
+      const visibleBookings = allBookings.filter(
+        (b: Booking) => b.status !== 'rejected' && b.status !== 'cancelled'
+      );
+
+      setBookings(visibleBookings);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load bookings');
     } finally {
@@ -169,11 +220,16 @@ export default function AdminCalendarPage() {
   };
 
   const hasBookingOnDate = (date: Date) => {
-    return bookings.some(b => isSameDay(new Date(b.check_in_date), date));
+    return filterBookingsForDate(date, bookings).length > 0;
   };
 
   const getBookingCountForDate = (date: Date) => {
-    return bookings.filter(b => isSameDay(new Date(b.check_in_date), date)).length;
+    return filterBookingsForDate(date, bookings).length;
+  };
+
+  // Wrapper function for convenience
+  const getFilteredBookingsForDate = (date: Date): Booking[] => {
+    return filterBookingsForDate(date, bookings);
   };
 
   const goToPreviousMonth = () => {
@@ -187,35 +243,33 @@ export default function AdminCalendarPage() {
   const goToToday = () => {
     setCurrentMonth(todayDate);
     setSelectedDate(todayDate);
-    const reservation = bookings.find(b => isSameDay(new Date(b.check_in_date), todayDate));
-    setSelectedReservation(reservation);
+    const filteredBookings = getFilteredBookingsForDate(todayDate);
+    setSelectedReservation(filteredBookings[0]);
   };
 
   const handleDateSelect = (date: Date) => {
     setSelectedDate(date);
     setCurrentBookingIndex(0);
-    const dateBookings = bookings.filter(b => isSameDay(new Date(b.check_in_date), date));
-    setSelectedReservation(dateBookings[0]);
+    const filteredBookings = getFilteredBookingsForDate(date);
+    setSelectedReservation(filteredBookings[0]);
   };
 
   const handlePreviousBooking = () => {
-    const dateBookings = bookings.filter(b => 
-      selectedDate && isSameDay(new Date(b.check_in_date), selectedDate)
-    );
-    if (dateBookings.length > 0) {
+    if (!selectedDate) return;
+    const filteredBookings = getFilteredBookingsForDate(selectedDate);
+    if (filteredBookings.length > 0) {
       setCurrentBookingIndex(prev => 
-        prev > 0 ? prev - 1 : dateBookings.length - 1
+        prev > 0 ? prev - 1 : filteredBookings.length - 1
       );
     }
   };
 
   const handleNextBooking = () => {
-    const dateBookings = bookings.filter(b => 
-      selectedDate && isSameDay(new Date(b.check_in_date), selectedDate)
-    );
-    if (dateBookings.length > 0) {
+    if (!selectedDate) return;
+    const filteredBookings = getFilteredBookingsForDate(selectedDate);
+    if (filteredBookings.length > 0) {
       setCurrentBookingIndex(prev => 
-        prev < dateBookings.length - 1 ? prev + 1 : 0
+        prev < filteredBookings.length - 1 ? prev + 1 : 0
       );
     }
   };
@@ -230,7 +284,7 @@ export default function AdminCalendarPage() {
 
   const selectedDateBookings = useMemo(() => {
     if (!selectedDate) return [];
-    return bookings.filter(b => isSameDay(new Date(b.check_in_date), selectedDate));
+    return filterBookingsForDate(selectedDate, bookings);
   }, [bookings, selectedDate]);
 
   if (loading) {
@@ -344,11 +398,29 @@ export default function AdminCalendarPage() {
                   <div className="p-4 bg-primary/5 rounded-lg border border-primary/20">
                     <div className="flex items-start justify-between mb-2">
                       <h3 className="text-xl font-bold text-primary">{selectedReservation.user_name || selectedReservation.user_email || 'Unknown Client'}</h3>
-                      <Badge variant={selectedReservation.status === 'completed' ? 'default' : selectedReservation.status === 'cancelled' ? 'destructive' : 'outline'} className="ml-2">
-                        {selectedReservation.status === 'confirmed' && <Clock className="w-3 h-3 mr-1" />}
+                      <Badge 
+                        variant={
+                          selectedReservation.status === 'approved' ? 'default' 
+                          : selectedReservation.status === 'completed' ? 'default' 
+                          : selectedReservation.status === 'pending' ? 'outline'
+                          : 'destructive'
+                        } 
+                        className={`ml-2 ${
+                          selectedReservation.status === 'approved' 
+                            ? 'bg-green-100 text-green-800 border-green-200' 
+                            : selectedReservation.status === 'pending'
+                            ? 'bg-yellow-100 text-yellow-800 border-yellow-200'
+                            : selectedReservation.status === 'completed'
+                            ? 'bg-blue-100 text-blue-800 border-blue-200'
+                            : ''
+                        }`}
+                      >
+                        {selectedReservation.status === 'pending' && <Clock className="w-3 h-3 mr-1" />}
+                        {selectedReservation.status === 'approved' && <CheckCircle2 className="w-3 h-3 mr-1" />}
                         {selectedReservation.status === 'completed' && <CheckCircle2 className="w-3 h-3 mr-1" />}
                         {selectedReservation.status === 'cancelled' && <XCircle className="w-3 h-3 mr-1" />}
-                        {selectedReservation.status}
+                        {selectedReservation.status === 'rejected' && <XCircle className="w-3 h-3 mr-1" />}
+                        {selectedReservation.status.charAt(0).toUpperCase() + selectedReservation.status.slice(1)}
                       </Badge>
                     </div>
                     <p className="text-sm text-muted-foreground flex items-center gap-2 mb-1">

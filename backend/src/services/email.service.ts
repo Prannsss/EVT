@@ -495,6 +495,119 @@ export const sendBookingNotificationEmail = async (
   }
 };
 
+// AUTO-REJECTION EMAIL WITH REFUND NOTICE (When another booking is approved for same slot)
+
+interface AutoRejectionEmailData {
+  to: string;
+  clientName: string;
+  bookingId: number;
+  accommodation: string;
+  checkIn: string;
+  timeSlot: string;
+}
+
+export const sendAutoRejectionWithRefundEmail = async (
+  data: AutoRejectionEmailData
+): Promise<boolean> => {
+  const subject = `Booking Request Update - #${data.bookingId}`;
+  
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { 
+          background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); 
+          color: white; 
+          padding: 30px; 
+          text-align: center; 
+          border-radius: 10px 10px 0 0; 
+        }
+        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+        .details-box { 
+          background: white; 
+          border: 1px solid #ddd; 
+          border-radius: 8px; 
+          padding: 20px; 
+          margin: 20px 0; 
+        }
+        .refund-notice {
+          background: #ecfdf5;
+          border: 2px solid #10b981;
+          border-radius: 8px;
+          padding: 20px;
+          margin: 20px 0;
+          text-align: center;
+        }
+        .refund-notice h3 {
+          color: #059669;
+          margin: 0 0 10px 0;
+        }
+        .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>Booking Update</h1>
+        </div>
+        <div class="content">
+          <p>Dear ${data.clientName},</p>
+          <p>We regret to inform you that your booking request could not be accommodated as another guest has been confirmed for the same time slot.</p>
+          
+          <div class="details-box">
+            <h3>Booking Details:</h3>
+            <p><strong>Booking ID:</strong> #${data.bookingId}</p>
+            <p><strong>Accommodation:</strong> ${data.accommodation}</p>
+            <p><strong>Requested Date:</strong> ${new Date(data.checkIn).toLocaleDateString()}</p>
+            <p><strong>Time Slot:</strong> ${data.timeSlot}</p>
+          </div>
+          
+          <div class="refund-notice">
+            <h3>💰 Refund Notice</h3>
+            <p style="margin: 0; font-size: 16px;">Your payment will be refunded in full.</p>
+            <p style="margin: 10px 0 0 0; font-size: 14px; color: #666;">Please allow 3-5 business days for the refund to be processed.</p>
+          </div>
+          
+          <p>We sincerely apologize for any inconvenience this may cause. We encourage you to make a new booking for a different date or time slot.</p>
+          
+          <p>If you have any questions about your refund or would like to make a new reservation, please don't hesitate to contact us.</p>
+          
+          <p>Best regards,<br>${env.EMAIL_FROM_NAME || 'Elimar Spring Garden Resort Team'}</p>
+        </div>
+        <div class="footer">
+          <p>This is an automated message, please do not reply.</p>
+          <p>&copy; ${new Date().getFullYear()} Elimar Spring Garden Resort. All rights reserved.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  try {
+    const sent = await sendEmail({
+      to: data.to,
+      subject,
+      html,
+    });
+
+    const message = `Auto-rejection with refund - Booking #${data.bookingId} - ${data.accommodation}`;
+    await logEmail(data.to, subject, message, 'status_update', sent ? 'sent' : 'failed');
+
+    if (sent) {
+      console.log(`✅ Auto-rejection email with refund notice sent to ${data.to}`);
+    }
+    return sent;
+  } catch (error) {
+    console.error(`❌ Failed to send auto-rejection email:`, error);
+    const message = `Auto-rejection with refund - Booking #${data.bookingId} - ${data.accommodation}`;
+    await logEmail(data.to, subject, message, 'status_update', 'failed');
+    return false;
+  }
+};
+
 // BOOKING CONFIRMATION EMAIL (INITIAL BOOKING SUBMISSION)
 
 export const sendBookingConfirmation = async (
