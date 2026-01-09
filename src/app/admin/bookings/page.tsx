@@ -92,6 +92,7 @@ export default function BookingsPage() {
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
   const [isCheckOutModalOpen, setIsCheckOutModalOpen] = useState(false);
   const [actionBooking, setActionBooking] = useState<Booking | null>(null);
+  const [activeTab, setActiveTab] = useState('requests');
 
   useEffect(() => {
     fetchBookings();
@@ -613,7 +614,7 @@ export default function BookingsPage() {
         <h2 className="text-2xl font-bold mb-1">Bookings</h2>
         <p className="text-sm text-muted-foreground">Manage your booking requests and reservations</p>
       </div>
-      <Tabs defaultValue="requests" className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="mb-4">
           <TabsTrigger value="requests" className="gap-2">
             <Calendar className="w-4 h-4" />

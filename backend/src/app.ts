@@ -14,6 +14,7 @@ import pricingRoutes from './routes/pricing.routes.js';
 import walkInRoutes from './routes/walk-in.routes.js';
 import reportRoutes from './routes/report.routes.js';
 import timeSettingsRoutes from './routes/time-settings.routes.js';
+import paymentSettingsRoutes from './routes/payment-settings.routes.js';
 import { errorHandler } from './middlewares/error.middleware.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -45,6 +46,7 @@ app.use('/api/pricing', pricingRoutes);
 app.use('/api/walk_in', walkInRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/time-settings', timeSettingsRoutes);
+app.use('/api/payment-settings', paymentSettingsRoutes);
 
 // API root endpoint
 app.get('/api', (req, res) => {

@@ -690,7 +690,7 @@ export default function WalkInPage() {
                         // Auto-calculate amount based on selection and current time slot
                         const acc = accommodations.find(a => a.id.toString() === value);
                         if (acc) {
-                          const price = selectedTimeSlot === 'whole_day' && acc.add_price ? acc.add_price : acc.price;
+                          const price = (selectedTimeSlot === 'night' || selectedTimeSlot === 'whole_day') && acc.add_price ? acc.add_price : acc.price;
                           setFormData(prev => ({ ...prev, accommodation_id: value, amount_paid: price }));
                         }
                       }}
@@ -722,7 +722,7 @@ export default function WalkInPage() {
                                   .map((acc) => (
                                     <SelectItem key={acc.id} value={acc.id.toString()}>
                                       {acc.name} - ₱{acc.price.toLocaleString()}
-                                      {acc.add_price && ` (Whole Day: ₱${acc.add_price.toLocaleString()})`}
+                                      {acc.add_price && ` (Night/Whole Day: ₱${acc.add_price.toLocaleString()})`}
                                     </SelectItem>
                                   ))
                               )}

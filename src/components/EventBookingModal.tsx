@@ -16,7 +16,7 @@ import { Label } from "./ui/label"
 import { Input } from "./ui/input"
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover"
 import { Calendar as CalendarComponent } from "./ui/calendar"
-import { Calendar, Loader2, Sparkles, Info, AlertCircle, FileText, X } from "lucide-react"
+import { Calendar, Loader2, Sparkles, Info, AlertCircle, FileText, X, QrCode } from "lucide-react"
 import { API_URL } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import { useAvailability } from "@/hooks/use-availability";
@@ -58,6 +58,7 @@ export default function EventBookingModal({ isOpen, onClose }: EventBookingModal
   // Dynamic pricing state
   const [pricing, setPricing] = useState<DynamicPricing | null>(null)
   const [loadingPricing, setLoadingPricing] = useState(true)
+  const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null)
   
   // Terms and Conditions state
   const [showTermsModal, setShowTermsModal] = useState(false)
@@ -68,13 +69,16 @@ export default function EventBookingModal({ isOpen, onClose }: EventBookingModal
     const fetchPricing = async () => {
       try {
         setLoadingPricing(true)
-        const response = await fetch(`${API_URL}/api/pricing`)
+        const [pricingRes, paymentRes] = await Promise.all([
+          fetch(`${API_URL}/api/pricing`),
+          fetch(`${API_URL}/api/payment-settings`)
+        ])
         
-        if (!response.ok) {
+        if (!pricingRes.ok) {
           throw new Error('Failed to fetch pricing')
         }
 
-        const data = await response.json()
+        const data = await pricingRes.json()
         const settings = data.data
 
         // Convert array to grouped object
@@ -89,6 +93,12 @@ export default function EventBookingModal({ isOpen, onClose }: EventBookingModal
         })
 
         setPricing(grouped)
+        
+        // Fetch QR code
+        if (paymentRes.ok) {
+          const paymentData = await paymentRes.json()
+          setQrCodeUrl(paymentData.data?.qr_code_url || null)
+        }
       } catch (error) {
         console.error('Error fetching pricing:', error)
         // Use default values on error
@@ -467,13 +477,20 @@ export default function EventBookingModal({ isOpen, onClose }: EventBookingModal
                 {/* Left: QR Code */}
                 <div className="flex flex-col items-center justify-center p-6 border rounded-lg bg-muted">
                   <div className="w-48 h-48 bg-white rounded-lg flex items-center justify-center mb-4 border-2 overflow-hidden">
-                    <Image
-                      src="/assets/payment-qr.png"
-                      alt="Payment QR Code"
-                      width={180}
-                      height={180}
-                      className="object-contain"
-                    />
+                    {qrCodeUrl ? (
+                      <Image
+                        src={qrCodeUrl.startsWith('http') ? qrCodeUrl : `${API_URL}${qrCodeUrl}`}
+                        alt="Payment QR Code"
+                        width={180}
+                        height={180}
+                        className="object-contain"
+                      />
+                    ) : (
+                      <div className="flex flex-col items-center justify-center text-muted-foreground">
+                        <QrCode className="w-24 h-24 mb-2" />
+                        <p className="text-sm text-center">QR Code Not Available</p>
+                      </div>
+                    )}
                   </div>
                   <p className="text-sm text-center text-muted-foreground font-medium">
                     Scan to pay via GCash or PayMaya

@@ -152,7 +152,7 @@ export default function Home() {
             size="lg" 
             className="mt-12 bg-primary hover:bg-primary/90 text-primary-foreground px-10 py-7 text-lg rounded-xl shadow-2xl transition-all duration-300 font-semibold hover:scale-105 relative overflow-hidden group"
           >
-            <Link href="/signup" className="flex items-center gap-2 relative z-10">
+            <Link href={isLoggedIn ? "/client/accommodations" : "/signup"} className="flex items-center gap-2 relative z-10">
               <span className="absolute inset-0 -left-full w-full bg-gradient-to-r from-transparent via-white/30 to-transparent skew-x-12 group-hover:left-full transition-all duration-700 ease-out"></span>
               Book Your Escape <span className="text-xl">→</span>
             </Link>

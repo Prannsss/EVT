@@ -83,6 +83,7 @@ export const modifyAccommodation = async (req: Request, res: Response) => {
     const updates: any = {};
 
     // Get text fields from body
+    if (req.body.name) updates.name = req.body.name;
     if (req.body.price) updates.price = parseFloat(req.body.price);
     if (req.body.add_price !== undefined) {
       updates.add_price = req.body.add_price ? parseFloat(req.body.add_price) : null;

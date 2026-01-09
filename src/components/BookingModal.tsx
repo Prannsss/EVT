@@ -19,7 +19,7 @@ import { Badge } from "./ui/badge"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "./ui/tabs"
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover"
 import { Calendar as CalendarComponent } from "./ui/calendar"
-import { Plus, Minus, Clock, Calendar, Loader2, AlertCircle, Info, Droplet, Sparkles, Check, Sun, Moon } from "lucide-react"
+import { Plus, Minus, Clock, Calendar, Loader2, AlertCircle, Info, Droplet, Sparkles, Check, Sun, Moon, QrCode } from "lucide-react"
 import Accommodation3D from "./Accommodation3D"
 import { API_URL } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
@@ -102,19 +102,23 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
   // Dynamic pricing state
   const [pricing, setPricing] = useState<DynamicPricing | null>(null)
   const [loadingPricing, setLoadingPricing] = useState(true)
+  const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null)
 
   // Fetch dynamic pricing on mount
   useEffect(() => {
     const fetchPricing = async () => {
       try {
         setLoadingPricing(true)
-        const response = await fetch(`${API_URL}/api/pricing`)
+        const [pricingRes, paymentRes] = await Promise.all([
+          fetch(`${API_URL}/api/pricing`),
+          fetch(`${API_URL}/api/payment-settings`)
+        ])
         
-        if (!response.ok) {
+        if (!pricingRes.ok) {
           throw new Error('Failed to fetch pricing')
         }
 
-        const data = await response.json()
+        const data = await pricingRes.json()
         const settings = data.data
 
         // Convert array to grouped object
@@ -135,6 +139,12 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
         })
 
         setPricing(grouped)
+        
+        // Fetch QR code
+        if (paymentRes.ok) {
+          const paymentData = await paymentRes.json()
+          setQrCodeUrl(paymentData.data?.qr_code_url || null)
+        }
       } catch (error) {
         console.error('Error fetching pricing:', error)
         // Use default values on error
@@ -296,8 +306,8 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
 
     let total = 0
 
-    // For rooms with whole_day slot, use add_price (whole day price) instead of base price
-    if (accommodation.type === 'room' && selectedTimeSlot === 'whole_day' && accommodation.add_price) {
+    // For rooms with night or whole_day slot, use add_price (which is the same for both) instead of base price
+    if (accommodation.type === 'room' && (selectedTimeSlot === 'night' || selectedTimeSlot === 'whole_day') && accommodation.add_price) {
       total += Number(accommodation.add_price)
     } else {
       // Add accommodation base price (ensure it's a number)
@@ -1150,21 +1160,26 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
                     id="overnight-swimming" 
                     checked={overnightSwimming}
                     onCheckedChange={(checked) => {
-                      // Only allow unchecking if not Night/Whole Day
-                      if (!isNightOrWholeDay) {
+                      // Only allow changes if not Night/Whole Day and not Morning
+                      if (!isNightOrWholeDay && selectedTimeSlot !== 'morning') {
                         setOvernightSwimming(checked as boolean)
                       }
                     }}
-                    disabled={isNightOrWholeDay}
+                    disabled={isNightOrWholeDay || selectedTimeSlot === 'morning'}
                   />
                   <Label 
                     htmlFor="overnight-swimming" 
-                    className={`text-sm font-medium leading-none cursor-pointer ${isNightOrWholeDay ? 'text-muted-foreground' : ''}`}
+                    className={`text-sm font-medium leading-none cursor-pointer ${isNightOrWholeDay || selectedTimeSlot === 'morning' ? 'text-muted-foreground' : ''}`}
                   >
                     Overnight Swimming (Night Swimming - ₱{pricing.night_swimming.per_head.toLocaleString('en-PH')} per head)
                     {isNightOrWholeDay && (
                       <span className="ml-2 text-xs text-indigo-600 dark:text-indigo-400">
                         (Auto-included for {selectedTimeSlot === 'whole_day' ? 'Whole Day' : 'Night'} bookings)
+                      </span>
+                    )}
+                    {selectedTimeSlot === 'morning' && (
+                      <span className="ml-2 text-xs text-muted-foreground">
+                        (Not available for Morning bookings)
                       </span>
                     )}
                   </Label>
@@ -1176,9 +1191,11 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
                 <div className="p-3 bg-muted/50 rounded-lg">
                   <p className="text-sm text-muted-foreground">
                     <Info className="h-4 w-4 inline mr-2" />
-                    {selectedTimeSlot === 'whole_day' 
+                    {selectedTimeSlot === 'night'
+                      ? `You've selected the Night slot (₱${Number(accommodation.add_price || accommodation.price).toLocaleString('en-PH')}). Whole Day slot is available at the same price.`
+                      : selectedTimeSlot === 'whole_day' 
                       ? `You've selected the Whole Day slot (₱${Number(accommodation.add_price || accommodation.price).toLocaleString('en-PH')}). This includes access from 9 AM to 10 PM.`
-                      : `Select "Whole Day" time slot for extended hours (9 AM - 10 PM) at ₱${Number(accommodation.add_price || accommodation.price).toLocaleString('en-PH')}.`
+                      : `Night and Whole Day time slots are available at ₱${Number(accommodation.add_price || accommodation.price).toLocaleString('en-PH')}.`
                     }
                   </p>
                 </div>
@@ -1207,7 +1224,7 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
                   {selectedTimeSlot && ` - ${getTimeSlotLabel(selectedTimeSlot)}`}
                 </span>
                 <span className="font-medium">
-                  ₱{(accommodation.type === 'room' && selectedTimeSlot === 'whole_day' && accommodation.add_price 
+                  ₱{(accommodation.type === 'room' && (selectedTimeSlot === 'night' || selectedTimeSlot === 'whole_day') && accommodation.add_price 
                     ? Number(accommodation.add_price) 
                     : Number(accommodation.price)
                   ).toFixed(2)}
@@ -1325,13 +1342,20 @@ export default function BookingModal({ accommodation, isOpen, onClose }: Booking
               {/* Left: QR Code */}
               <div className="flex flex-col items-center justify-center p-6 border rounded-lg bg-muted">
                 <div className="w-48 h-48 bg-white rounded-lg flex items-center justify-center mb-4 border-2 overflow-hidden">
-                  <Image
-                    src="/assets/payment-qr.png"
-                    alt="Payment QR Code"
-                    width={180}
-                    height={180}
-                    className="object-contain"
-                  />
+                  {qrCodeUrl ? (
+                    <Image
+                      src={qrCodeUrl.startsWith('http') ? qrCodeUrl : `${API_URL}${qrCodeUrl}`}
+                      alt="Payment QR Code"
+                      width={180}
+                      height={180}
+                      className="object-contain"
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center justify-center text-muted-foreground">
+                      <QrCode className="w-24 h-24 mb-2" />
+                      <p className="text-sm text-center">QR Code Not Available</p>
+                    </div>
+                  )}
                 </div>
                 <p className="text-sm text-center text-muted-foreground font-medium">
                   Scan to pay via GCash or PayMaya

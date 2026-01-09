@@ -94,6 +94,7 @@ export default function AdminRoomsPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [editedName, setEditedName] = useState("");
   const [editedPrice, setEditedPrice] = useState("");
   const [editedAddPrice, setEditedAddPrice] = useState("");
   const [editedDescription, setEditedDescription] = useState("");
@@ -270,6 +271,7 @@ export default function AdminRoomsPage() {
       try {
         // Create FormData for update
         const formData = new FormData();
+        formData.append('name', editedName);
         formData.append('price', editedPrice);
         formData.append('description', editedDescription);
         formData.append('capacity', editedCapacity);
@@ -325,14 +327,12 @@ export default function AdminRoomsPage() {
           title: 'Success!',
           description: 'Accommodation updated successfully!',
         });
-        setIsEditing(false);
-        setNewEditImages([]);
-        setEditPanoramicFile(null);
-        setRemovedImageIndices([]);
-        setReplacePanoramic(false);
         
         // Refresh accommodations list
         await fetchAccommodations();
+        
+        // Close the modal
+        handleDialogClose();
       } catch (error) {
         console.error('Error updating accommodation:', error);
         toast({
@@ -343,6 +343,7 @@ export default function AdminRoomsPage() {
       }
     } else if (selected) {
       // Enter edit mode
+      setEditedName(selected.name);
       setEditedPrice(selected.price);
       setEditedAddPrice(selected.add_price || "");
       setEditedDescription(selected.description);
@@ -373,6 +374,7 @@ export default function AdminRoomsPage() {
     setIsEditing(false);
     setSelected(null);
     setActiveTab("still");
+    setEditedName("");
     setEditedPrice("");
     setEditedAddPrice("");
     setEditedDescription("");
@@ -783,9 +785,18 @@ export default function AdminRoomsPage() {
                         <Label className="text-sm font-semibold text-muted-foreground">
                           Name
                         </Label>
-                        <div className="text-lg font-bold mt-1">
-                          {selected.name}
-                        </div>
+                        {isEditing ? (
+                          <Input
+                            value={editedName}
+                            onChange={(e) => setEditedName(e.target.value)}
+                            className="w-full mt-1"
+                            placeholder="Enter accommodation name..."
+                          />
+                        ) : (
+                          <div className="text-lg font-bold mt-1">
+                            {selected.name}
+                          </div>
+                        )}
                       </div>
 
                       <div>
@@ -832,7 +843,7 @@ export default function AdminRoomsPage() {
 
                         <div>
                           <Label className="text-sm font-semibold text-muted-foreground">
-                            {selected.type === 'room' ? 'Morning Price' : 'Price'}
+                            {selected.type === 'room' ? 'Day/Morning Price' : 'Price'}
                           </Label>
                           {isEditing ? (
                             <div className="relative mt-1">
@@ -858,25 +869,31 @@ export default function AdminRoomsPage() {
                         {selected.type === 'room' && (
                           <div>
                             <Label className="text-sm font-semibold text-muted-foreground">
-                              Whole Day Price
+                              Night & Whole Day Price
                             </Label>
                             {isEditing ? (
-                              <div className="relative mt-1">
-                                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">
-                                  ₱
-                                </span>
-                                <Input
-                                  value={editedAddPrice}
-                                  onChange={(e) => setEditedAddPrice(e.target.value)}
-                                  className="w-full pl-7"
-                                  placeholder="Enter whole day price..."
-                                />
+                              <div>
+                                <div className="relative mt-1">
+                                  <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">
+                                    ₱
+                                  </span>
+                                  <Input
+                                    value={editedAddPrice}
+                                    onChange={(e) => setEditedAddPrice(e.target.value)}
+                                    className="w-full pl-7"
+                                    placeholder="Enter night & whole day price..."
+                                  />
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-1">This price applies to both Night and Whole Day slots</p>
                               </div>
                             ) : (
-                              <div className="flex items-center gap-1 mt-1">
-                                <span className="text-base font-bold text-primary">
-                                  ₱{selected.add_price || 'Not set'}
-                                </span>
+                              <div>
+                                <div className="flex items-center gap-1 mt-1">
+                                  <span className="text-base font-bold text-primary">
+                                    ₱{selected.add_price || 'Not set'}
+                                  </span>
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-1">Applies to both Night and Whole Day</p>
                               </div>
                             )}
                           </div>
@@ -1301,7 +1318,7 @@ export default function AdminRoomsPage() {
             <div className={`grid gap-4 ${newAccommodation.type === 'room' ? 'grid-cols-3' : 'grid-cols-2'}`}>
               <div>
                 <Label htmlFor="price" className="text-sm font-semibold">
-                  {newAccommodation.type === 'room' ? 'Morning Price' : 'Price'}
+                  {newAccommodation.type === 'room' ? 'Day/Morning Price' : 'Price'}
                 </Label>
                 <div className="relative mt-1">
                   <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">
@@ -1325,7 +1342,7 @@ export default function AdminRoomsPage() {
               {newAccommodation.type === 'room' && (
                 <div>
                   <Label htmlFor="add_price" className="text-sm font-semibold">
-                    Whole Day Price
+                    Night & Whole Day Price
                   </Label>
                   <div className="relative mt-1">
                     <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">

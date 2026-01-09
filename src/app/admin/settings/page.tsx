@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import Image from 'next/image';
 import { 
   Loader2, 
   AlertCircle, 
@@ -14,7 +15,9 @@ import {
   Users,
   Waves,
   Calendar,
-  Moon
+  Moon,
+  QrCode,
+  Upload
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { API_URL } from '@/lib/utils';
@@ -60,10 +63,30 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // QR Code management
+  const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
+  const [isEditingQR, setIsEditingQR] = useState(false);
+  const [newQRFile, setNewQRFile] = useState<File | null>(null);
+  const [savingQR, setSavingQR] = useState(false);
+  const qrFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchPricing();
+    fetchPaymentSettings();
   }, []);
+
+  const fetchPaymentSettings = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/payment-settings`);
+      if (response.ok) {
+        const data = await response.json();
+        setQrCodeUrl(data.data?.qr_code_url || null);
+      }
+    } catch (err) {
+      console.error('Failed to fetch payment settings:', err);
+    }
+  };
 
   const fetchPricing = async () => {
     try {
@@ -182,6 +205,71 @@ export default function SettingsPage() {
     }));
   };
 
+  const handleQRFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setNewQRFile(e.target.files[0]);
+      setIsEditingQR(true); // Show editing UI with preview and save button
+    }
+  };
+
+  const handleSaveQR = async () => {
+    if (!newQRFile) {
+      toast({
+        title: 'Error',
+        description: 'Please select a QR code image',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      setSavingQR(true);
+      const token = localStorage.getItem('token');
+      if (!token) {
+        toast({
+          title: 'Authentication Required',
+          description: 'Please login to continue.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('qrCode', newQRFile);
+
+      const response = await fetch(`${API_URL}/api/payment-settings/qr-code`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to update QR code');
+      }
+
+      toast({
+        title: 'Success',
+        description: 'QR code updated successfully',
+      });
+
+      setIsEditingQR(false);
+      setNewQRFile(null);
+      await fetchPaymentSettings();
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: err instanceof Error ? err.message : 'Failed to update QR code',
+        variant: 'destructive',
+      });
+    } finally {
+      setSavingQR(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -204,33 +292,146 @@ export default function SettingsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold mb-1">Pricing Settings</h2>
+          <h2 className="text-2xl font-bold mb-1">Payment & Pricing Settings</h2>
           <p className="text-sm text-muted-foreground">
-            Manage entrance fees, swimming fees, event rates, and night swimming prices
+            Manage payment QR code, entrance fees, swimming fees, event rates, and night swimming prices
           </p>
         </div>
-        {!isEditing ? (
-          <Button onClick={handleEdit} className="gap-2">
-            <Edit className="w-4 h-4" />
-            Edit Pricing
-          </Button>
-        ) : (
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={handleCancel} className="gap-2">
-              <X className="w-4 h-4" />
-              Cancel
+        <div className="flex gap-2">
+          {!isEditingQR && (
+            <Button onClick={() => qrFileInputRef.current?.click()} variant="outline" className="gap-2">
+              <QrCode className="w-4 h-4" />
+              Edit QR Code
             </Button>
-            <Button onClick={handleSave} disabled={saving} className="gap-2">
-              {saving ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Save className="w-4 h-4" />
-              )}
-              Save Changes
+          )}
+          {!isEditing ? (
+            <Button onClick={handleEdit} className="gap-2">
+              <Edit className="w-4 h-4" />
+              Edit Pricing
             </Button>
-          </div>
-        )}
+          ) : (
+            <>
+              <Button variant="outline" onClick={handleCancel} className="gap-2">
+                <X className="w-4 h-4" />
+                Cancel
+              </Button>
+              <Button onClick={handleSave} disabled={saving} className="gap-2">
+                {saving ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Save className="w-4 h-4" />
+                )}
+                Save Changes
+              </Button>
+            </>
+          )}
+        </div>
       </div>
+
+      {/* QR Code Management */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <QrCode className="w-5 h-5 text-primary" />
+            Payment QR Code
+          </CardTitle>
+          <CardDescription>Manage the QR code displayed for GCash/PayMaya payments</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <input
+            type="file"
+            ref={qrFileInputRef}
+            onChange={handleQRFileChange}
+            accept="image/*"
+            className="hidden"
+            aria-label="Upload QR code image"
+          />
+          {isEditingQR ? (
+            <div className="space-y-4">
+              <div className="flex items-center gap-4">
+                {qrCodeUrl && (
+                  <div className="relative w-48 h-48 border-2 border-muted rounded-lg overflow-hidden">
+                    <Image
+                      src={qrCodeUrl.startsWith('http') ? qrCodeUrl : `${API_URL}${qrCodeUrl}`}
+                      alt="Current QR Code"
+                      fill
+                      style={{ objectFit: 'contain' }}
+                      className="p-2"
+                    />
+                  </div>
+                )}
+                {newQRFile && (
+                  <div className="relative w-48 h-48 border-2 border-primary rounded-lg overflow-hidden">
+                    <Image
+                      src={URL.createObjectURL(newQRFile)}
+                      alt="New QR Code"
+                      fill
+                      style={{ objectFit: 'contain' }}
+                      className="p-2"
+                    />
+                  </div>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => qrFileInputRef.current?.click()}
+                  className="gap-2"
+                >
+                  <Upload className="w-4 h-4" />
+                  {newQRFile ? 'Change Image' : 'Upload QR Code'}
+                </Button>
+                <Button onClick={handleSaveQR} disabled={savingQR || !newQRFile} className="gap-2">
+                  {savingQR ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Save className="w-4 h-4" />
+                  )}
+                  Save QR Code
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    setIsEditingQR(false);
+                    setNewQRFile(null);
+                  }}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-4">
+              {qrCodeUrl ? (
+                <div className="relative w-48 h-48 border-2 border-muted rounded-lg overflow-hidden">
+                  <Image
+                    src={qrCodeUrl.startsWith('http') ? qrCodeUrl : `${API_URL}${qrCodeUrl}`}
+                    alt="Payment QR Code"
+                    fill
+                    style={{ objectFit: 'contain' }}
+                    className="p-2"
+                  />
+                </div>
+              ) : (
+                <div 
+                  className="w-48 h-48 border-2 border-dashed border-muted rounded-lg flex items-center justify-center cursor-pointer hover:border-primary hover:bg-muted/50 transition-colors"
+                  onClick={() => qrFileInputRef.current?.click()}
+                >
+                  <div className="text-center text-muted-foreground">
+                    <QrCode className="w-12 h-12 mx-auto mb-2" />
+                    <p className="text-sm">No QR code uploaded</p>
+                    <p className="text-xs mt-1">Click to upload</p>
+                  </div>
+                </div>
+              )}
+              <div className="text-sm text-muted-foreground">
+                <p>This QR code will be displayed to customers during the payment process.</p>
+                <p className="mt-2">{qrCodeUrl ? 'Click "Edit QR Code" to update it.' : 'Click to upload a QR code.'}</p>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Entrance Fees */}
       <Card>
