@@ -1,7 +1,7 @@
 -- Migration: Fix rooms that are missing whole_day support
 -- This migration ensures all room-type accommodations have supports_whole_day = 1
 -- Run this migration to fix any rooms that were created before the fix
--- Date: 2026
+-- Date: January 11, 2026
 
 -- Update existing room accommodations to support whole_day
 UPDATE `accommodations`
