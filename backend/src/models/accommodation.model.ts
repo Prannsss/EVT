@@ -18,9 +18,13 @@ export const getAccommodationById = async (id: number): Promise<Accommodation | 
 };
 
 export const createAccommodation = async (data: AccommodationCreate): Promise<number> => {
+  // Set default time slot support based on accommodation type
+  // Rooms support whole_day by default, cottages do not
+  const supportsWholeDayDefault = data.type === 'room' ? 1 : 0;
+  
   const [result] = await pool.query<ResultSetHeader>(
-    `INSERT INTO accommodations (name, type, capacity, description, price, add_price, inclusions, image_url, panoramic_url)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO accommodations (name, type, capacity, description, price, add_price, inclusions, image_url, panoramic_url, supports_morning, supports_night, supports_whole_day)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       data.name,
       data.type,
@@ -31,6 +35,9 @@ export const createAccommodation = async (data: AccommodationCreate): Promise<nu
       data.inclusions || null,
       data.image_url || null,
       data.panoramic_url || null,
+      data.supports_morning !== undefined ? (data.supports_morning ? 1 : 0) : 1,
+      data.supports_night !== undefined ? (data.supports_night ? 1 : 0) : 1,
+      data.supports_whole_day !== undefined ? (data.supports_whole_day ? 1 : 0) : supportsWholeDayDefault,
     ]
   );
   return result.insertId;
